@@ -18,6 +18,7 @@
 #pragma link C++ class o2::focal::ASICData + ;
 #pragma link C++ class o2::focal::ASICContainer + ;
 #pragma link C++ class o2::focal::HCalDecoder + ;
+#pragma link C++ class o2::focal::HCalMapper + ;
 #pragma link C++ class o2::focal::PadData + ;
 #pragma link C++ class o2::focal::PadDecoder + ;
 #pragma link C++ class o2::focal::PadMapper + ;
