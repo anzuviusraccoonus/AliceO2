@@ -19,6 +19,7 @@ o2_add_library(FOCALReconstruction
         src/HCalGBTLink.cxx
         src/HCalROC.cxx
         src/HCalROCDataLink.cxx
+        src/HCalMapper.cxx
         src/PixelLaneData.cxx
         src/PixelDecoder.cxx
         src/PixelMapper.cxx
@@ -35,6 +36,7 @@ o2_target_root_dictionary(
         include/FOCALReconstruction/HCalGBTLink.h
         include/FOCALReconstruction/HCalROC.h
         include/FOCALReconstruction/HCalROCDataLink.h
+        include/FOCALReconstruction/HCalMapper.h
         include/FOCALReconstruction/PixelMapper.h
         include/FOCALReconstruction/PixelDecoder.h
         include/FOCALReconstruction/PixelLaneData.h
