@@ -17,6 +17,12 @@ namespace o2::focal
 {
 
 class HCalROCDataLink {
+
+  static constexpr unsigned int HEADER_INDEX = 0;
+  static constexpr unsigned int CM_INDEX     = 1;
+  static constexpr unsigned int CALIB_INDEX  = 20;
+  static constexpr unsigned int CRC_INDEX    = 39;
+
   public:
     HCalROCDataLink() = default;
     ~HCalROCDataLink() = default;
@@ -33,7 +39,11 @@ class HCalROCDataLink {
     HCalChannel getChannel(int index);
     unsigned int getCRC();
 
+    std::array<unsigned int, constants::HCAL_NUM_GBT_LINES_PER_LINK> getWords();
+
   private:
+    std::array<unsigned int, constants::HCAL_NUM_GBT_LINES_PER_LINK> mRawWords;
+
     HCalDAQHeader mHeader;
     HCalChannel mChannels[constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
     HCalChannel mCommonMode;
