@@ -26,6 +26,7 @@ using namespace o2::focal;
 
 void HCalDecoder::reset() {
   mHasData = false;
+  mIsDataValid = true;
   LOGF(debug, "Resetting HCal decoder");
   LOGF(debug, "Line counters:     %d %d", mLinkLineCounters[0], mLinkLineCounters[1]);
   LOGF(debug, "Sample counters:   %d %d", mLinkSampleCounters[0], mLinkSampleCounters[1]);
@@ -36,6 +37,7 @@ void HCalDecoder::reset() {
       mLinkLineCounters[i] = 0;
       mLinkSampleCounters[i] = 0;
       mLinkFrameActive[i] = false;
+      mLinkExceptions[i] = 0;
     }
   }
 }
@@ -55,6 +57,19 @@ bool HCalDecoder::isIdleLine(HCalGBTLine ln) {
 bool HCalDecoder::isTriggerLine(HCalGBTLine ln) {
   return ( (ln.words[0] == 0xBBBBBBBB) == 1 );
 }
+
+bool HCalDecoder::isDAQHLine(HCalGBTLine ln) {
+  constexpr unsigned int headerPattern = 0xF0000005;
+  HCalDataWord dw0 = static_cast<HCalDataWord>(ln.words[2]);
+  HCalDataWord dw1 = static_cast<HCalDataWord>(ln.words[3]);
+  HCalDataWord dw2 = static_cast<HCalDataWord>(ln.words[4]);
+  HCalDataWord dw3 = static_cast<HCalDataWord>(ln.words[5]);
+  return ( ( (dw0 & headerPattern) == headerPattern) |
+           ( (dw1 & headerPattern) == headerPattern) |
+           ( (dw2 & headerPattern) == headerPattern) |
+           ( (dw3 & headerPattern) == headerPattern) ) == 1;
+}
+
 
 void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
   if (buffer.size() == 0) {
@@ -77,7 +92,42 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
     }
 
     int link_id = line.link_id();
+
+    // Don't process more lines for this link if we
+    // already got the expected number of samples
+    if (mLinkSampleCounters[link_id] == 16) {
+      continue;
+    }
+
+    // If we're not currently in a data frame..
     if (not mLinkFrameActive[link_id]) {
+
+      // ..then the next line should be the first line, i.e. DAQH words
+      if (not isDAQHLine(line)) {
+
+        // If it isn't, something is wrong. One possible case is that
+        // some bit shift/flip errors made the idle word unrecognizable, and
+        // thus we end up here, but without a DAQH line. 
+        // We can attempt to continue, and check if the next line is a DAQH line;
+        // if it is (and is identifiable as one) we can keep going.
+        if (mLinkExceptions[link_id] == 0) {
+          LOGF(warn, "Expected DAQH line but pattern was not matched - potential (severe) bit shift corruption in this trigger! (Link %02d, sample %02d)", link_id, mLinkSampleCounters[link_id]);
+          ++mLinkExceptions[link_id];
+          continue;
+        }
+        
+        // Otherwise, if the DAQH line still cannot be identified, then there is
+        // probably something very wrong, and the start of the frame cannot be 
+        // determined without guessing (which might be fine, but we don't know).
+        // So, stop decoding here and mark the result as invalid.
+        if (mLinkExceptions[link_id] > 0) {
+          LOGF(error, "Cannot determine start of DAQ frame! Data in this trigger is likely severely corrupted. Stopping decoding and marking this result as bad.");
+          mIsDataValid = false;
+          return;
+        }
+      }
+
+      // Otherwise, we found the DAQH line, and can continue as normal.
       mLinkFrameActive[link_id] = true;
       LOGF(debug, "--v-- Link %02d start of DAQ frame --v--", link_id);
     }
@@ -95,12 +145,12 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
                                                         line.words[5].data,
                                                         line.words[6].data,
                                                         line.words[7].data);
-
+    
     if (mLinkFrameActive[link_id]) {
 
       // In rare cases, bit shift corruptions in data can result in an erroneus sample count,
       // so exit early to prevent segmentation faults
-      if (mLinkSampleCounters[link_id] > 15) {
+      if (mLinkSampleCounters[link_id] > 16) {
         LOGF(error, "Sample counter greater than number of samples! (%d)", mLinkSampleCounters[link_id]);
       	return;
       }
@@ -110,7 +160,7 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
 
       // 40 lines marks the end of a frame, always
       if (mLinkLineCounters[link_id] == 40) {
-        LOGF(info, "--^-- Link %02d end of DAQ frame --^--", link_id);
+        LOGF(debug, "--^-- Link %02d end of DAQ frame --^--", link_id);
         mLinkFrameActive[link_id] = false;
         mLinkLineCounters[link_id] = 0;
         ++mLinkSampleCounters[link_id];

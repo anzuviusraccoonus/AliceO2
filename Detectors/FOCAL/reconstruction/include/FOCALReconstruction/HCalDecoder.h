@@ -39,17 +39,21 @@ class HCalDecoder {
   bool isNullLine(HCalGBTLine line);
   bool isIdleLine(HCalGBTLine line);
   bool isTriggerLine(HCalGBTLine line);
+  bool isDAQHLine(HCalGBTLine line);
   bool hasEventData() { return mHasData; }
+  bool isDataValid() { return mIsDataValid; }
   std::array<int, constants::HCAL_NUM_GBT_LINKS> getNumSamplesRead() { return mLinkSampleCounters; }
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getData() { return mLinks; }
 
  private:
   int mWin_dur = 20; // unused?
   bool mHasData;
+  bool mIsDataValid = true;
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
   std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkLineCounters = {};
   std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkSampleCounters = {};
   std::array<bool, constants::HCAL_NUM_GBT_LINKS> mLinkFrameActive = {};
+  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkExceptions = {};
 
   ClassDefNV(HCalDecoder, 1);
 };
