@@ -218,7 +218,7 @@ class Geometry
   int mGlobal_HCAL_Tower_NY = 0;              // Number of HCAL towers on Y
   float mGlobal_HCAL_Pitch_Size = 0.0;        // Distance between two fibers
   float mGlobal_HCAL_BeamPipeHole_Size = 0.0; // beam pipe hole size in HCAL
-  HCALDesgin mHCALDesign = Sandwich;          // HCAL design type
+  HCALDesgin mHCALDesign = Sheets;          // HCAL design type
 
   float mGlobal_FOCAL_Z0 = 0.0;
 

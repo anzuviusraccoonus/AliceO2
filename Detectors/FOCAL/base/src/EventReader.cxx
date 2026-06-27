@@ -22,6 +22,7 @@ void EventReader::init(TTree* eventTree)
 {
   mTreeReader = std::make_unique<TTreeReader>(eventTree);
   mPadBranch = std::make_unique<TTreeReaderValue<std::vector<PadLayerEvent>>>(*mTreeReader, "FOCALPadLayer");
+  mHCALBranch = std::make_unique<TTreeReaderValue<std::vector<HCALEvent>>>(*mTreeReader, "FOCALHCAL"); // --> Added by Tommaso
   mPixelChipBranch = std::make_unique<TTreeReaderValue<std::vector<PixelChipRecord>>>(*mTreeReader, "FOCALPixelChip");
   mPixelHitBranch = std::make_unique<TTreeReaderValue<std::vector<PixelHit>>>(*mTreeReader, "FOCALPixelHit");
   mTriggerBranch = std::make_unique<TTreeReaderValue<std::vector<TriggerRecord>>>(*mTreeReader, "FOCALTrigger");
@@ -72,6 +73,10 @@ Event EventReader::readNextEvent()
     if (triggerrecord.getNumberOfPadObjects()) {
       eventPadData = gsl::span<const PadLayerEvent>((*mPadBranch)->data() + triggerrecord.getFirstPadEntry(), triggerrecord.getNumberOfPadObjects());
     }
+    gsl::span<const HCALEvent> eventHCALData;
+    if (triggerrecord.getNumberOfHcalObjects()) {
+      eventHCALData = gsl::span<const HCALEvent>((*mHCALBranch)->data() + triggerrecord.getFirstHcalEntry(), triggerrecord.getNumberOfHcalObjects()); // --> Added by Tommaso
+    }
     gsl::span<const PixelHit> eventPixelHits;
     if (triggerrecord.getNumberOfPixelHitObjects()) {
       eventPixelHits = gsl::span<const PixelHit>((*mPixelHitBranch)->data() + triggerrecord.getFirstPixelHitEntry(), triggerrecord.getNumberOfPixelHitObjects());
@@ -81,7 +86,7 @@ Event EventReader::readNextEvent()
       eventPixelChip = gsl::span<const PixelChipRecord>((*mPixelChipBranch)->data() + triggerrecord.getFirstPixelChipEntry(), triggerrecord.getNumberOfPixelChipObjects());
     }
 
-    nextevent.construct(triggerrecord.getBCData(), eventPadData, eventPixelChip, eventPixelHits);
+    nextevent.construct(triggerrecord.getBCData(), eventPadData, eventHCALData, eventPixelChip, eventPixelHits);
   }
   mEntryInTF++;
   return nextevent;

@@ -34,12 +34,17 @@ void HCalDecoder::reset() {
   for (int sample = 0; sample < 16; ++sample) {
     for (int i = 0; i < 2; ++i) {
       mLinks[sample][i].reset();
+      mLinksPerEv[sample][i].reset();
       mLinkLineCounters[i] = 0;
       mLinkSampleCounters[i] = 0;
       mLinkFrameActive[i] = false;
       mLinkExceptions[i] = 0;
+      mLinkLineCountersEv[i] = 0;
+      mLinkSampleCountersEv[i] = 0;
+      mLinkFrameActiveEv[i] = false;
     }
   }
+  mEvents.clear();
 }
 
 bool HCalDecoder::isNullLine(HCalGBTLine ln) {
@@ -87,8 +92,24 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
     // which marks the first data line of the first sample of the event.
     // Probably a good idea to add another check to see if we get the DAQH header and trailer patterns,
     // since it has been observed that bit flip / shift corruptions can cause idle words to not be recognized as such
-    if ( isNullLine(line) | isIdleLine(line) | isTriggerLine(line) ) { 
-      continue; 
+    if ( isNullLine(line) | isIdleLine(line) ) {
+      continue;
+    }
+
+    // Trigger line marks the boundary between events: flush accumulated per-event data
+    if (isTriggerLine(line)) {
+      if (mLinkSampleCountersEv[0] > 0 || mLinkSampleCountersEv[1] > 0) {
+        mEvents.push_back(mLinksPerEv);
+        for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
+          for (int j = 0; j < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++j) {
+            mLinksPerEv[j][i].reset();
+          }
+          mLinkLineCountersEv[i] = 0;
+          mLinkSampleCountersEv[i] = 0;
+          mLinkFrameActiveEv[i] = false;
+        }
+      }
+      continue;
     }
 
     int link_id = line.link_id();
@@ -158,6 +179,17 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
       mLinks[mLinkSampleCounters[link_id]][link_id].fillData(line, mLinkLineCounters[link_id]);     
       ++mLinkLineCounters[link_id];
 
+      // Also accumulate per-event data in parallel
+      if (mLinkSampleCountersEv[link_id] <= 15) {
+        mLinksPerEv[mLinkSampleCountersEv[link_id]][link_id].fillData(line, mLinkLineCountersEv[link_id]);
+        ++mLinkLineCountersEv[link_id];
+        if (mLinkLineCountersEv[link_id] == 40) {
+          mLinkFrameActiveEv[link_id] = false;
+          mLinkLineCountersEv[link_id] = 0;
+          ++mLinkSampleCountersEv[link_id];
+        }
+      }
+
       // 40 lines marks the end of a frame, always
       if (mLinkLineCounters[link_id] == 40) {
         LOGF(debug, "--^-- Link %02d end of DAQ frame --^--", link_id);
@@ -166,5 +198,10 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
         ++mLinkSampleCounters[link_id];
       }
     }
+  }
+
+  // Flush the last in-progress event (final event in HBF has no trailing trigger line)
+  if (mLinkSampleCountersEv[0] > 0 || mLinkSampleCountersEv[1] > 0) {
+    mEvents.push_back(mLinksPerEv);
   }
 }
