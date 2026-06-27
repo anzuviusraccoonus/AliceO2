@@ -92,9 +92,9 @@ struct HCALTreeData {
             auto currentHalf = currentROC.getChipHalf(half);
             for (int chn = 0; chn < NCHANNELS; ++chn) {
               auto ch = currentHalf.getChannel(chn);
-              mADC[sample][link_id][roc_id][half][chn] = ch.adc();
-              mTOT[sample][link_id][roc_id][half][chn] = ch.tot();
-              mTOA[sample][link_id][roc_id][half][chn] = ch.toa();
+              mADC[sample][link_id][roc_id][half][chn] = ch.adc;
+              mTOT[sample][link_id][roc_id][half][chn] = ch.tot;
+              mTOA[sample][link_id][roc_id][half][chn] = ch.toa;
             }
           }
         }
@@ -290,7 +290,6 @@ int main(int argc, char** argv)
         LOG(debug) << "Found payload size:         " << payloadsize;
         LOG(debug) << "Found offset to next:       " << o2::raw::RDHUtils::getOffsetToNext(rdh);
         LOG(debug) << "Stop bit:                   " << (o2::raw::RDHUtils::getStop(rdh) ? "yes" : "no");
-        LOG(debug) << "Number of GBT words:        " << (payloadsize * sizeof(char) / sizeof(o2::focal::HCALGBTWord));
         auto page_payload = dataBuffer.subspan(currentpos + o2::raw::RDHUtils::getHeaderSize(rdh), payloadsize);
         std::copy(page_payload.begin(), page_payload.end(), std::back_inserter(hbfbuffer));
         currentpos += o2::raw::RDHUtils::getOffsetToNext(rdh);

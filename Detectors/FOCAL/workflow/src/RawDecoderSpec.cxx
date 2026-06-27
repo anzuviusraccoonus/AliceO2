@@ -385,9 +385,9 @@ int RawDecoderSpec::decodeHcalData(const gsl::span<const char> hcalpayload, o2::
   return nEvents;
 }
 
-HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>& links)
+o2::focal::HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>& links)
 {
-  HCALEvent event;
+  o2::focal::HCALEvent event;
 
   for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
     for (int link_id = 0; link_id < constants::HCAL_NUM_GBT_LINKS; ++link_id) {
