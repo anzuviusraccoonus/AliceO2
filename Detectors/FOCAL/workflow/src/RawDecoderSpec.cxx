@@ -243,14 +243,14 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
     }
   }
 
-  LOG(info) << "Found " << mHBFs.size() << " HBFs in timeframe";
+  LOG(debug) << "Found " << mHBFs.size() << " HBFs in timeframe";
 
   LOG(debug) << "EventBuilder: Pixels: " << (mTimeframeHasPixelData ? "yes" : "no");
   LOG(debug) << "EventBuilder: Pads:   " << (mTimeframeHasPadData ? "yes" : "no");
   LOG(debug) << "EventBuilder: HCAL:   " << (mTimeframeHasHcalData ? "yes" : "no");
   buildEvents();
 
-  LOG(info) << "Found " << mOutputTriggerRecords.size() << " events in timeframe";
+  LOG(debug) << "Found " << mOutputTriggerRecords.size() << " events in timeframe";
 
   sendOutput(ctx);
   mNumEventsPads += numEventsPadsTF;
@@ -736,7 +736,7 @@ int RawDecoderSpec::maxCounter(const std::unordered_map<int, int>& counters) con
 void RawDecoderSpec::printCounters(const std::unordered_map<int, int>& counters) const
 {
   for (auto& [fee, counter] : counters) {
-    LOG(info) << "  FEE 0x" << std::hex << fee << std::dec << ": " << counter << " counts ...";
+    LOG(debug) << "  FEE 0x" << std::hex << fee << std::dec << ": " << counter << " counts ...";
   }
 }
 
@@ -753,7 +753,7 @@ void RawDecoderSpec::printEvents(const std::unordered_map<int, std::vector<int>>
       }
       stringbuilder << ev;
     }
-    LOG(info) << "  FEE 0x" << std::hex << fee << std::dec << ": " << stringbuilder.str() << " events ...";
+    LOG(debug) << "  FEE 0x" << std::hex << fee << std::dec << ": " << stringbuilder.str() << " events ...";
   }
 }
 
