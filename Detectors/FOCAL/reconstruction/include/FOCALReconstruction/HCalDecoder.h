@@ -11,6 +11,7 @@
 #ifndef ALICEO2_FOCAL_HCALDECODER_H
 #define ALICEO2_FOCAL_HCALDECODER_H
 
+
 #include <array>
 #include <vector>
 #include <functional>
@@ -26,38 +27,51 @@
 namespace o2::focal
 {
 
+struct LinkContext {
+  enum class State {
+    WaitingForFrame,
+    ReadingFrame,
+    Finished,
+    Error
+  };
+
+  State state = State::WaitingForFrame;
+  int samples = 0;
+  int lines   = 0;
+  int id      = -1;
+};
+
 class HCalDecoder {
  public:
   HCalDecoder() = default;
   ~HCalDecoder() = default;
 
-  void setTriggerWinDur(int windur) { mWin_dur = windur; } // unused?
-
   void reset();
   void decodeBuffer(gsl::span<const char> buffer);
+  void processLine(HCalGBTLine line, LinkContext& ctx);
 
+  bool isTriggerLine(HCalGBTLine line);
   bool isNullLine(HCalGBTLine line);
   bool isIdleLine(HCalGBTLine line);
-  bool isTriggerLine(HCalGBTLine line);
   bool isDAQHLine(HCalGBTLine line);
+  
   bool hasEventData() { return mHasData; }
-  bool isDataValid() { return mIsDataValid; }
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> getNumSamplesRead() { return mLinkSampleCounters; }
+  bool isDataValid()  { return mIsDataValid; }
+
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getData() { return mLinks; }
 
- private:
-  int mWin_dur = 20; // unused?
-  bool mHasData;
-  bool mIsDataValid = true;
-  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkLineCounters = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkSampleCounters = {};
-  std::array<bool, constants::HCAL_NUM_GBT_LINKS> mLinkFrameActive = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkExceptions = {};
+  int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
 
+ private:
+  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
+  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
+  bool mIsDataValid;
+  bool mHasData;
+  
   ClassDefNV(HCalDecoder, 1);
 };
 
 } // namespace o2::focal
 
 #endif // ALICEO2_FOCAL_HCALDECODER_H
+//
