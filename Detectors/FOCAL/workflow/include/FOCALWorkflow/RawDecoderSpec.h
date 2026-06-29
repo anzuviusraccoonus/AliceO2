@@ -24,6 +24,7 @@
 #include "DataFormatsFOCAL/PixelChipRecord.h"
 #include "DataFormatsFOCAL/TriggerRecord.h"
 #include "FOCALReconstruction/PadDecoder.h"
+#include "FOCALReconstruction/HCalDecoder.h"
 #include "FOCALReconstruction/PixelDecoder.h"
 #include "FOCALReconstruction/PixelMapper.h"
 
@@ -40,12 +41,20 @@ class RawDecoderSpec : public framework::Task
  public:
   struct HBFData {
     std::vector<std::array<PadLayerEvent, constants::PADS_NLAYERS>> mPadEvents;
+    std::vector<HCALEvent> mHCALEvents;
     std::vector<std::array<PixelLayerEvent, constants::PIXELS_NLAYERS>> mPixelEvent;
     std::vector<o2::InteractionRecord> mPixelTriggers;
     std::vector<std::vector<int>> mFEEs;
   };
   RawDecoderSpec() = default;
-  RawDecoderSpec(uint32_t outputSubspec, bool usePadData, bool usePixelData, bool debug) : mDebugMode(debug), mUsePadData(usePadData), mUsePixelData(usePixelData), mOutputSubspec(outputSubspec) {}
+  RawDecoderSpec(uint32_t outputSubspec, bool usePadData, bool usePixelData, bool useHcalData, bool debug)
+    : mDebugMode(debug),
+      mUsePadData(usePadData),
+      mUsePixelData(usePixelData),
+      mUseHcalData(useHcalData),
+      mOutputSubspec(outputSubspec)
+  {
+  }
   ~RawDecoderSpec() override = default;
 
   void init(framework::InitContext& ctx) final;
@@ -59,6 +68,8 @@ class RawDecoderSpec : public framework::Task
   void resetContainers();
   int decodePadData(const gsl::span<const char> padWords, o2::InteractionRecord& hbIR);
   void decodePadEvent(const gsl::span<const char> padWords, o2::InteractionRecord& hbIR);
+  int decodeHcalData(const gsl::span<const char> payload, o2::InteractionRecord& hbIR);
+  HCALEvent decodeHcalEvent(const std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>& frame);
   int decodePixelData(const gsl::span<const char> pixelWords, o2::InteractionRecord& hbIR, int fecID);
   std::array<PadLayerEvent, constants::PADS_NLAYERS> createPadLayerEvent(const o2::focal::PadData& data) const;
   void fillChipToLayer(PixelLayerEvent& pixellayer, const PixelChip& chipData, int feeID);
@@ -76,35 +87,43 @@ class RawDecoderSpec : public framework::Task
   bool mDisplayInconsistent = false;
   bool mUsePadData = true;
   bool mUsePixelData = true;
+  bool mUseHcalData = false;
   bool mFilterIncomplete = false;
   bool mTimeframeHasPadData = false;
   bool mTimeframeHasPixelData = false;
+  bool mTimeframeHasHcalData = false;
   uint32_t mOutputSubspec = 0;
   PadDecoder mPadDecoder;
   PixelDecoder mPixelDecoder;
+  HCalDecoder mHcalDecoder;
   std::unique_ptr<PixelMapper> mPixelMapping;
   std::map<o2::InteractionRecord, HBFData> mHBFs;
   std::vector<TriggerRecord> mOutputTriggerRecords;
   std::vector<PixelHit> mOutputPixelHits;
   std::vector<PixelChipRecord> mOutputPixelChips;
   std::vector<PadLayerEvent> mOutputPadLayers;
+  std::vector<HCALEvent> mOutputHcal;
 
   // Some counters
   int mNumTimeframes = 0;
   int mNumHBFPads = 0;
   int mNumHBFPixels = 0;
+  int mNumHBFHcal = 0;
   int mNumEventsPads = 0;
   int mNumEventsPixels = 0;
+  int mNumEventsHcal = 0;
   int mNumInconsistencyPixelHBF = 0;
   int mNumInconsistencyPixelEvent = 0;
   int mNumInconsistencyPixelEventHBF = 0;
   std::map<int, int> mNumEventsHBFPads;
   std::map<int, int> mNumEventsHBFPixels;
+  std::map<int, int> mNumEventsHBFHcal;
   std::map<int, int> mNumHBFperTFPads;
   std::map<int, int> mNumHBFperTFPixels;
+  std::map<int, int> mNumHBFperTFHcal;
 };
 
-framework::DataProcessorSpec getRawDecoderSpec(bool askDISTSTF, uint32_t outputSubspec, bool usePadData, bool usePixelData, bool debugMode);
+framework::DataProcessorSpec getRawDecoderSpec(bool askDISTSTF, uint32_t outputSubspec, bool usePadData, bool usePixelData, bool useHcalData, bool debugMode);
 
 } // namespace reco_workflow
 

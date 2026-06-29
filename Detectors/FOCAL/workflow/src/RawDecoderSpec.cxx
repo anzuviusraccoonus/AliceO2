@@ -65,6 +65,7 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
   resetContainers();
   mTimeframeHasPadData = false;
   mTimeframeHasPixelData = false;
+  mTimeframeHasHcalData = false;
 
   int inputs = 0;
   std::vector<char> rawbuffer;
@@ -73,6 +74,7 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
   std::unordered_map<int, int> numHBFFEE, numEventsFEE;
   std::unordered_map<int, std::vector<int>> numEventsHBFFEE;
   int numHBFPadsTF = 0, numEventsPadsTF = 0;
+  int numHBFHcalTF = 0, numEventsHcalTF = 0;
   std::vector<int> expectFEEs;
   for (const auto& rawData : framework::InputRecordWalker(ctx.inputs())) {
     if (rawData.header != nullptr && rawData.payload != nullptr) {
@@ -128,6 +130,23 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
                   }
                   numEventsPadsTF += nEventsPads;
                   numHBFPadsTF++;
+                }
+              } else if (currentfee == 0xbeef) { // TODO: replace 0xbeef with real HCAL FEE ID
+                // HCAL data
+                if (mUseHcalData) {
+                  LOG(debug) << "Processing HCAL data";
+                  auto nEventsHcal = decodeHcalData(rawbuffer, currentIR);
+                  if (nEventsHcal > 0) {
+                    mTimeframeHasHcalData = true;
+                  }
+                  auto found = mNumEventsHBFHcal.find(nEventsHcal);
+                  if (found != mNumEventsHBFHcal.end()) {
+                    found->second += 1;
+                  } else {
+                    mNumEventsHBFHcal.insert({nEventsHcal, 1});
+                  }
+                  numEventsHcalTF += nEventsHcal;
+                  numHBFHcalTF++;
                 }
               } else { // All other FEEs are pixel FEEs
                 // Pixel data
@@ -224,17 +243,20 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
     }
   }
 
-  LOG(info) << "Found " << mHBFs.size() << " HBFs in timeframe";
+  LOG(debug) << "Found " << mHBFs.size() << " HBFs in timeframe";
 
   LOG(debug) << "EventBuilder: Pixels: " << (mTimeframeHasPixelData ? "yes" : "no");
   LOG(debug) << "EventBuilder: Pads:   " << (mTimeframeHasPadData ? "yes" : "no");
+  LOG(debug) << "EventBuilder: HCAL:   " << (mTimeframeHasHcalData ? "yes" : "no");
   buildEvents();
 
-  LOG(info) << "Found " << mOutputTriggerRecords.size() << " events in timeframe";
+  LOG(debug) << "Found " << mOutputTriggerRecords.size() << " events in timeframe";
 
   sendOutput(ctx);
   mNumEventsPads += numEventsPadsTF;
   mNumHBFPads += numHBFPadsTF;
+  mNumEventsHcal += numEventsHcalTF;
+  mNumHBFHcal += numHBFHcalTF;
   mNumTimeframes++;
   auto foundHBFperTFPads = mNumHBFperTFPads.find(numHBFPadsTF);
   if (foundHBFperTFPads != mNumHBFperTFPads.end()) {
@@ -248,6 +270,12 @@ void RawDecoderSpec::run(framework::ProcessingContext& ctx)
   } else {
     mNumHBFperTFPixels.insert(std::pair<int, int>{numHBFPixelsTF, 1});
   }
+  auto foundHBFperTFHcal = mNumHBFperTFHcal.find(numHBFHcalTF);
+  if (foundHBFperTFHcal != mNumHBFperTFHcal.end()) {
+    foundHBFperTFHcal->second++;
+  } else {
+    mNumHBFperTFHcal.insert({numHBFHcalTF, 1});
+  }
 }
 
 void RawDecoderSpec::endOfStream(o2::framework::EndOfStreamContext& ec)
@@ -255,19 +283,27 @@ void RawDecoderSpec::endOfStream(o2::framework::EndOfStreamContext& ec)
   std::cout << "Number of timeframes:             " << mNumTimeframes << std::endl;
   std::cout << "Number of pad HBFs:               " << mNumHBFPads << std::endl;
   std::cout << "Number of pixel HBFs:             " << mNumHBFPixels << std::endl;
+  std::cout << "Number of hcal HBFs:              " << mNumHBFHcal << std::endl;
   for (auto& [hbfs, tfs] : mNumHBFperTFPads) {
     std::cout << "Pads - Number of TFs with " << hbfs << " HBFs: " << tfs << std::endl;
   }
   for (auto& [hbfs, tfs] : mNumHBFperTFPixels) {
     std::cout << "Pixels - Number of TFs with " << hbfs << " HBFs: " << tfs << std::endl;
   }
+  for (auto& [hbfs, tfs] : mNumHBFperTFHcal) {
+    std::cout << "HCAL - Number of TFs with " << hbfs << " HBFs: " << tfs << std::endl;
+  }
   std::cout << "Number of pad events:             " << mNumEventsPads << std::endl;
   std::cout << "Number of pixel events:           " << mNumEventsPixels << std::endl;
+  std::cout << "Number of hcal events:            " << mNumEventsHcal << std::endl;
   for (auto& [nevents, nHBF] : mNumEventsHBFPads) {
     std::cout << "Number of HBFs with " << nevents << " pad events:    " << nHBF << std::endl;
   }
   for (auto& [nevents, nHBF] : mNumEventsHBFPixels) {
     std::cout << "Number of HBFs with " << nevents << " pixel events:    " << nHBF << std::endl;
+  }
+  for (auto& [nevents, nHBF] : mNumEventsHBFHcal) {
+    std::cout << "Number of HBFs with " << nevents << " hcal events:    " << nHBF << std::endl;
   }
   std::cout << "Number of inconsistencies between pixel FEEs: " << mNumInconsistencyPixelHBF << " HBFs, " << mNumInconsistencyPixelEvent << " events, " << mNumInconsistencyPixelEventHBF << " events / HBF" << std::endl;
 }
@@ -275,6 +311,7 @@ void RawDecoderSpec::endOfStream(o2::framework::EndOfStreamContext& ec)
 void RawDecoderSpec::sendOutput(framework::ProcessingContext& ctx)
 {
   ctx.outputs().snapshot(framework::Output{o2::header::gDataOriginFOC, "PADLAYERS", mOutputSubspec}, mOutputPadLayers);
+  ctx.outputs().snapshot(framework::Output{o2::header::gDataOriginFOC, "HCALDATA", mOutputSubspec}, mOutputHcal);
   ctx.outputs().snapshot(framework::Output{o2::header::gDataOriginFOC, "PIXELHITS", mOutputSubspec}, mOutputPixelHits);
   ctx.outputs().snapshot(framework::Output{o2::header::gDataOriginFOC, "PIXELCHIPS", mOutputSubspec}, mOutputPixelChips);
   ctx.outputs().snapshot(framework::Output{o2::header::gDataOriginFOC, "TRIGGERS", mOutputSubspec}, mOutputTriggerRecords);
@@ -284,6 +321,7 @@ void RawDecoderSpec::resetContainers()
 {
   mHBFs.clear();
   mOutputPadLayers.clear();
+  mOutputHcal.clear();
   mOutputPixelChips.clear();
   mOutputPixelHits.clear();
   mOutputTriggerRecords.clear();
@@ -314,6 +352,75 @@ void RawDecoderSpec::decodePadEvent(const gsl::span<const char> padWords, o2::In
     foundHBF = res.first;
   }
   foundHBF->second.mPadEvents.push_back(createPadLayerEvent(mPadDecoder.getData()));
+}
+
+// ========================
+// HCAL decode + conversion
+// ========================
+
+int RawDecoderSpec::decodeHcalData(const gsl::span<const char> hcalpayload, o2::InteractionRecord& hbIR)
+{
+  LOG(debug) << "Decoding hcal data for Orbit " << hbIR.orbit << ", BC " << hbIR.bc;
+
+  mHcalDecoder.reset();
+  mHcalDecoder.decodeBuffer(hcalpayload);
+
+  if (!mHcalDecoder.hasEventData()) { return 0; }
+
+  const int nEvents = mHcalDecoder.getNumEvents();
+  LOGF(debug, "Number of HCAL events: %d", nEvents);
+
+  std::array<int, 2> numSamples = mHcalDecoder.getNumSamplesRead();
+  LOGF(debug, "Samples read: %02d %02d", numSamples[0], numSamples[1]);
+
+  auto& hbfData = mHBFs.try_emplace(hbIR).first->second;
+
+  for (int ievt = 0; ievt < nEvents; ++ievt) {
+    auto event = decodeHcalEvent(mHcalDecoder.getEventData(ievt));
+    event.mOrbit = hbIR.orbit;
+    event.mBC = hbIR.bc;
+    hbfData.mHCALEvents.push_back(event);
+  }
+
+  return nEvents;
+}
+
+o2::focal::HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>& links)
+{
+  o2::focal::HCALEvent event;
+
+  for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
+    for (int link_id = 0; link_id < constants::HCAL_NUM_GBT_LINKS; ++link_id) {
+      o2::focal::HCalGBTLink currentLink = links[sample][link_id];
+
+      for (int roc_id = 0; roc_id < 2; ++roc_id) {
+        o2::focal::HCalROC currentROC = currentLink.getROC(roc_id);
+
+        for (int half = 0; half < 2; ++half) {
+          o2::focal::HCalROCDataLink currentHalf = currentROC.getChipHalf(half);
+
+          event.mHeader[sample][link_id][roc_id][half] = currentHalf.getHeader().data;
+
+          event.mCMN_ADC [sample][link_id][roc_id][half] = currentHalf.getCommonMode().adc;
+          event.mCMN_TOA [sample][link_id][roc_id][half] = currentHalf.getCommonMode().toa;
+          event.mCMN_TOT [sample][link_id][roc_id][half] = currentHalf.getCommonMode().tot;
+
+          event.mCalib_ADC[sample][link_id][roc_id][half] = currentHalf.getCalibration().adc;
+          event.mCalib_TOA[sample][link_id][roc_id][half] = currentHalf.getCalibration().toa;
+          event.mCalib_TOT[sample][link_id][roc_id][half] = currentHalf.getCalibration().tot;
+
+          for (int chn = 0; chn < constants::HCAL_NUM_CHANNELS_PER_ROC_HALF; ++chn) {
+            o2::focal::HCalChannel currentChannel = currentHalf.getChannel(chn);
+            event.mADC[sample][link_id][roc_id][half][chn] = currentChannel.adc;
+            event.mTOA[sample][link_id][roc_id][half][chn] = currentChannel.toa;
+            event.mTOT[sample][link_id][roc_id][half][chn] = currentChannel.tot;
+          }
+        }
+      }
+    }
+  }
+
+  return event;
 }
 
 int RawDecoderSpec::decodePixelData(const gsl::span<const char> pixelWords, o2::InteractionRecord& hbIR, int feeID)
@@ -468,10 +575,14 @@ void RawDecoderSpec::buildEvents()
       LOG(debug) << "HBF: " << hbf.mPixelTriggers.size() << " triggers, " << hbf.mPadEvents.size() << " pad events, " << hbf.mPixelEvent.size() << " pixel events" << std::endl;
       for (std::size_t itrg = 0; itrg < hbf.mPixelTriggers.size(); itrg++) {
         auto startPads = mOutputPadLayers.size(),
+             startHCAL = mOutputHcal.size(),
              startHits = mOutputPixelHits.size(),
              startChips = mOutputPixelChips.size();
         for (std::size_t ilayer = 0; ilayer < constants::PADS_NLAYERS; ilayer++) {
           mOutputPadLayers.push_back(hbf.mPadEvents[itrg][ilayer]);
+        }
+        if (mTimeframeHasHcalData && itrg < hbf.mHCALEvents.size()) {
+          mOutputHcal.push_back(hbf.mHCALEvents[itrg]);
         }
         std::vector<PixelHit> eventHits;
         std::vector<PixelChipRecord> eventPixels;
@@ -481,7 +592,7 @@ void RawDecoderSpec::buildEvents()
         std::copy(eventHits.begin(), eventHits.end(), std::back_inserter(mOutputPixelHits));
         std::copy(eventPixels.begin(), eventPixels.end(), std::back_inserter(mOutputPixelChips));
         // std::cout << "Orbit " << hbf.mPixelTriggers[itrg].orbit << ", BC " << hbf.mPixelTriggers[itrg].bc << ": " << eventPixels.size() << " chips with " << eventHits.size() << " hits ..." << std::endl;
-        mOutputTriggerRecords.emplace_back(hbf.mPixelTriggers[itrg], startPads, constants::PADS_NLAYERS, startChips, eventPixels.size(), startHits, eventHits.size());
+        mOutputTriggerRecords.emplace_back(hbf.mPixelTriggers[itrg], startPads, constants::PADS_NLAYERS, startHCAL, (mTimeframeHasHcalData && itrg < hbf.mHCALEvents.size()) ? 1 : 0, startChips, eventPixels.size(), startHits, eventHits.size());
       }
     } else if (mTimeframeHasPixelData) {
       // only pixel data available, merge pixel layers and interaction record
@@ -491,6 +602,7 @@ void RawDecoderSpec::buildEvents()
       }
       for (std::size_t itrg = 0; itrg < hbf.mPixelTriggers.size(); itrg++) {
         auto startPads = mOutputPadLayers.size(),
+             startHCAL = mOutputHcal.size(),
              startHits = mOutputPixelHits.size(),
              startChips = mOutputPixelChips.size();
         std::vector<PixelHit> eventHits;
@@ -500,21 +612,29 @@ void RawDecoderSpec::buildEvents()
         }
         std::copy(eventHits.begin(), eventHits.end(), std::back_inserter(mOutputPixelHits));
         std::copy(eventPixels.begin(), eventPixels.end(), std::back_inserter(mOutputPixelChips));
-        mOutputTriggerRecords.emplace_back(hbf.mPixelTriggers[itrg], startPads, 0, startChips, eventPixels.size(), startHits, eventHits.size());
+        mOutputTriggerRecords.emplace_back(hbf.mPixelTriggers[itrg], startPads, 0, startHCAL, 0, startChips, eventPixels.size(), startHits, eventHits.size());
       }
     } else if (mTimeframeHasPadData) {
       // only pad data available, set pad layers and use IR of the HBF
       for (std::size_t itrg = 0; itrg < hbf.mPadEvents.size(); itrg++) {
-        auto startPads = mOutputPadLayers.size(),
-             startHits = mOutputPixelHits.size(),
-             startChips = mOutputPixelChips.size();
+        auto startPads = mOutputPadLayers.size();
         o2::InteractionRecord fakeBC;
         fakeBC.orbit = hbir.orbit;
         fakeBC.bc = hbir.bc + itrg;
         for (std::size_t ilayer = 0; ilayer < constants::PADS_NLAYERS; ilayer++) {
           mOutputPadLayers.push_back(hbf.mPadEvents[itrg][ilayer]);
         }
-        mOutputTriggerRecords.emplace_back(hbir, startPads, constants::PADS_NLAYERS, startChips, 0, startHits, 0);
+        auto startHCAL = mOutputHcal.size(),
+             startHits = mOutputPixelHits.size(),
+             startChips = mOutputPixelChips.size();
+        mOutputTriggerRecords.emplace_back(fakeBC, startPads, constants::PADS_NLAYERS, startHCAL, 0, startChips, 0, startHits, 0);
+      }
+    } else if (mTimeframeHasHcalData) {
+      // HCAL only
+      for (std::size_t ievt = 0; ievt < hbf.mHCALEvents.size(); ++ievt) {
+        auto startHCAL = mOutputHcal.size();
+        mOutputHcal.push_back(hbf.mHCALEvents[ievt]);
+        mOutputTriggerRecords.emplace_back(hbir, 0, 0, startHCAL, 1, 0, 0, 0, 0);
       }
     }
   }
@@ -616,7 +736,7 @@ int RawDecoderSpec::maxCounter(const std::unordered_map<int, int>& counters) con
 void RawDecoderSpec::printCounters(const std::unordered_map<int, int>& counters) const
 {
   for (auto& [fee, counter] : counters) {
-    LOG(info) << "  FEE 0x" << std::hex << fee << std::dec << ": " << counter << " counts ...";
+    LOG(debug) << "  FEE 0x" << std::hex << fee << std::dec << ": " << counter << " counts ...";
   }
 }
 
@@ -633,7 +753,7 @@ void RawDecoderSpec::printEvents(const std::unordered_map<int, std::vector<int>>
       }
       stringbuilder << ev;
     }
-    LOG(info) << "  FEE 0x" << std::hex << fee << std::dec << ": " << stringbuilder.str() << " events ...";
+    LOG(debug) << "  FEE 0x" << std::hex << fee << std::dec << ": " << stringbuilder.str() << " events ...";
   }
 }
 
@@ -665,12 +785,13 @@ void RawDecoderSpec::fillPixelEventHBFCount(const std::unordered_map<int, std::v
   }
 }
 
-o2::framework::DataProcessorSpec o2::focal::reco_workflow::getRawDecoderSpec(bool askDISTSTF, uint32_t outputSubspec, bool usePadData, bool usePixelData, bool debugMode)
+o2::framework::DataProcessorSpec o2::focal::reco_workflow::getRawDecoderSpec(bool askDISTSTF, uint32_t outputSubspec, bool usePadData, bool usePixelData, bool useHcalData, bool debugMode)
 {
   constexpr auto originFOC = o2::header::gDataOriginFOC;
   std::vector<o2::framework::OutputSpec> outputs;
 
   outputs.emplace_back(originFOC, "PADLAYERS", outputSubspec, o2::framework::Lifetime::Timeframe);
+  outputs.emplace_back(originFOC, "HCALDATA", outputSubspec, o2::framework::Lifetime::Timeframe);
   outputs.emplace_back(originFOC, "PIXELHITS", outputSubspec, o2::framework::Lifetime::Timeframe);
   outputs.emplace_back(originFOC, "PIXELCHIPS", outputSubspec, o2::framework::Lifetime::Timeframe);
   outputs.emplace_back(originFOC, "TRIGGERS", outputSubspec, o2::framework::Lifetime::Timeframe);
@@ -683,7 +804,7 @@ o2::framework::DataProcessorSpec o2::focal::reco_workflow::getRawDecoderSpec(boo
   return o2::framework::DataProcessorSpec{"FOCALRawDecoderSpec",
                                           inputs,
                                           outputs,
-                                          o2::framework::adaptFromTask<o2::focal::reco_workflow::RawDecoderSpec>(outputSubspec, usePadData, usePixelData, debugMode),
+                                          o2::framework::adaptFromTask<o2::focal::reco_workflow::RawDecoderSpec>(outputSubspec, usePadData, usePixelData, useHcalData, debugMode),
                                           o2::framework::Options{
                                             {"filterIncomplete", o2::framework::VariantType::Bool, false, {"Filter incomplete pixel events"}},
                                             {"displayInconsistent", o2::framework::VariantType::Bool, false, {"Display information about inconsistent timeframes"}},

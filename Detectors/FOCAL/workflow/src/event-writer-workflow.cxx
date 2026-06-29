@@ -53,6 +53,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
     // No subspecification defined (i.e. output from the raw-tf-reader workflow): Use concrete data type matcher
     specs.emplace_back(MakeRootTreeWriterSpec(workflowname.data(), "focalevents.root", "o2sim",
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PadLayerEvent>>{InputSpec{"dataapd", o2::framework::ConcreteDataTypeMatcher{"FOC", "PADLAYERS"}}, "FOCALPadLayer", "pad-branch-name"},
+                                              MakeRootTreeWriterSpec::BranchDefinition<std::vector<HCALEvent>>{InputSpec{"datahcal", o2::framework::ConcreteDataTypeMatcher{"FOC", "HCALDATA"}}, "FOCALHCAL", "hcal-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PixelHit>>{InputSpec{"datapixelhit", o2::framework::ConcreteDataTypeMatcher{"FOC", "PIXELHITS"}}, "FOCALPixelHit", "pixel-hit-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PixelChipRecord>>{InputSpec{"datapixelchip", o2::framework::ConcreteDataTypeMatcher{"FOC", "PIXELCHIPS"}}, "FOCALPixelChip", "pixel-chip-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<TriggerRecord>>{InputSpec{"datatrigger", o2::framework::ConcreteDataTypeMatcher{"FOC", "TRIGGERS"}}, "FOCALTrigger", "trigger-branch-name"})());
@@ -60,6 +61,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
     // Subspecification specified: Use full specification
     specs.emplace_back(MakeRootTreeWriterSpec(workflowname.data(), "focalevents.root", "o2sim",
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PadLayerEvent>>{InputSpec{"dataapd", "FOC", "PADLAYERS", subspec}, "FOCALPadLayer", "pad-branch-name"},
+                                              MakeRootTreeWriterSpec::BranchDefinition<std::vector<HCALEvent>>{InputSpec{"datahcal", "FOC", "HCALDATA", subspec}, "FOCALHCAL", "hcal-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PixelHit>>{InputSpec{"datapixelhit", "FOC", "PIXELHITS", subspec}, "FOCALPixelHit", "pixel-hit-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<PixelChipRecord>>{InputSpec{"datapixelchip", "FOC", "PIXELCHIPS", subspec}, "FOCALPixelChip", "pixel-chip-branch-name"},
                                               MakeRootTreeWriterSpec::BranchDefinition<std::vector<TriggerRecord>>{InputSpec{"datatrigger", "FOC", "TRIGGERS", subspec}, "FOCALTrigger", "trigger-branch-name"})());
