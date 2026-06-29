@@ -66,16 +66,12 @@ class HCalDecoder {
   int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
 
  private:
-  int mWin_dur = 20; // unused?
+  bool mIsDataValid;
   bool mHasData;
-  bool mIsDataValid = true;
 
   // Per-HBF storage
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkLineCounters = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkSampleCounters = {};
-  std::array<bool, constants::HCAL_NUM_GBT_LINKS> mLinkFrameActive = {};
-  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkExceptions = {};
+  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
 
   // Per-event storage (trigger line separates events)
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinksPerEv = {};
@@ -83,13 +79,6 @@ class HCalDecoder {
   std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkLineCountersEv = {};
   std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkSampleCountersEv = {};
   std::array<bool, constants::HCAL_NUM_GBT_LINKS> mLinkFrameActiveEv = {};
-
-
- private:
-  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
-  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
-  bool mIsDataValid;
-  bool mHasData;
   
   ClassDefNV(HCalDecoder, 1);
 };
