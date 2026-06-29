@@ -370,9 +370,6 @@ int RawDecoderSpec::decodeHcalData(const gsl::span<const char> hcalpayload, o2::
   const int nEvents = mHcalDecoder.getNumEvents();
   LOGF(debug, "Number of HCAL events: %d", nEvents);
 
-  std::array<int, 2> numSamples = mHcalDecoder.getNumSamplesRead();
-  LOGF(debug, "Samples read: %02d %02d", numSamples[0], numSamples[1]);
-
   auto& hbfData = mHBFs.try_emplace(hbIR).first->second;
 
   for (int ievt = 0; ievt < nEvents; ++ievt) {
