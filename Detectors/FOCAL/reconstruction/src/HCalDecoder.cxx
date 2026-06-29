@@ -117,6 +117,7 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
       mLinks[ctx.samples][ctx.id].fillData(line, ctx.lines);
       
       // Also accumulate per-event data in parallel
+      int link_id = line.link_id();
       if (mLinkSampleCountersEv[link_id] <= 15) {
         mLinksPerEv[mLinkSampleCountersEv[link_id]][link_id].fillData(line, mLinkLineCountersEv[link_id]);
         ++mLinkLineCountersEv[link_id];
