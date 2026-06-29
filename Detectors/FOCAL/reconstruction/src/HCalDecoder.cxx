@@ -25,20 +25,21 @@
 using namespace o2::focal;
 
 void HCalDecoder::reset() {
+  LOGF(debug, "Resetting HCal decoder");
+
+  // TODO: put these attributes on each link or ROC?
   mHasData = false;
   mIsDataValid = true;
-  LOGF(debug, "Resetting HCal decoder");
-  LOGF(debug, "Line counters:     %d %d", mLinkLineCounters[0], mLinkLineCounters[1]);
-  LOGF(debug, "Sample counters:   %d %d", mLinkSampleCounters[0], mLinkSampleCounters[1]);
-  LOGF(debug, "Active frame flag: %d %d", mLinkFrameActive[0], mLinkFrameActive[1]);
-  for (int sample = 0; sample < 16; ++sample) {
-    for (int i = 0; i < 2; ++i) {
+
+  for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
+    mLinkContexts[i].state = LinkContext::State::WaitingForFrame;
+    mLinkContexts[i].samples = 0;
+    mLinkContexts[i].lines = 0;
+    mLinkContexts[i].id = i;
+
+    for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
       mLinks[sample][i].reset();
       mLinksPerEv[sample][i].reset();
-      mLinkLineCounters[i] = 0;
-      mLinkSampleCounters[i] = 0;
-      mLinkFrameActive[i] = false;
-      mLinkExceptions[i] = 0;
       mLinkLineCountersEv[i] = 0;
       mLinkSampleCountersEv[i] = 0;
       mLinkFrameActiveEv[i] = false;
@@ -75,6 +76,84 @@ bool HCalDecoder::isDAQHLine(HCalGBTLine ln) {
            ( (dw3 & headerPattern) == headerPattern) ) == 1;
 }
 
+void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
+  switch (ctx.state) {
+    case LinkContext::State::WaitingForFrame:
+      LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
+      if (isIdleLine(line)) {
+        return;
+      } else if (isDAQHLine(line)) {
+        LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
+        ctx.state = LinkContext::State::ReadingFrame;
+      } else {
+        LOGF(warn, "LinkContext %d expected IDLE or DAQH line but got neither - potential corruption in event", ctx.id);
+        ctx.state = LinkContext::State::Error;
+        return;
+      }
+
+    // Break/return statement intentionally left out here, such that
+    // the state transition to ReadingFrame also reads the DAQH line
+
+    case LinkContext::State::ReadingFrame:
+      LOGF(debug, "LinkContext %d is in state ReadingFrame", ctx.id);
+
+      // Sometimes we get a DAQH line that is followed up by an IDLE,
+      // rarely with a small number of actual data lines first - not sure why
+      if (isIdleLine(line)) {
+        LOGF(warn, "LinkContext %d got IDLE line in a DAQ frame - sample data incomplete (%d lines read in sample %d)", ctx.id, ctx.lines, ctx.samples);
+        ctx.lines = 0;
+        if ((ctx.samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
+          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx.id, ctx.samples);
+          ctx.state = LinkContext::State::Finished;
+        } else {
+          ctx.state = LinkContext::State::WaitingForFrame;
+        }
+
+        break;
+      }
+
+      // This block is the normal execution path if everything is well
+      LOGF(debug, "LinkContext %d filling data (sample %d, line %d)", ctx.id, ctx.samples, ctx.lines);
+      mLinks[ctx.samples][ctx.id].fillData(line, ctx.lines);
+      
+      // Also accumulate per-event data in parallel
+      if (mLinkSampleCountersEv[link_id] <= 15) {
+        mLinksPerEv[mLinkSampleCountersEv[link_id]][link_id].fillData(line, mLinkLineCountersEv[link_id]);
+        ++mLinkLineCountersEv[link_id];
+        if (mLinkLineCountersEv[link_id] == 40) {
+          mLinkFrameActiveEv[link_id] = false;
+          mLinkLineCountersEv[link_id] = 0;
+          ++mLinkSampleCountersEv[link_id];
+        }
+      }
+      
+      if ((ctx.lines++)+1 == constants::HCAL_NUM_GBT_LINES_PER_LINK) {
+        if ((ctx.samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
+          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx.id, ctx.samples);
+          ctx.state = LinkContext::State::Finished;
+        } else {
+          LOGF(debug, "LinkContext %d read %d lines; state transition -> WaitingForFrame", ctx.id, ctx.lines);
+          ctx.lines = 0;
+          ctx.state = LinkContext::State::WaitingForFrame;
+        }
+      }
+
+      return;
+
+    case LinkContext::State::Finished:
+      LOGF(debug, "LinkContext %d is in state Finished", ctx.id);
+      return;
+
+    case LinkContext::State::Error:
+      LOGF(debug, "LinkContext %d is in state Error", ctx.id);
+      return;
+      
+    default:
+      LOGF(error, "LinkContext %d is in an unknown state! Samples read: %d    Lines read: %d", ctx.id, ctx.samples, ctx.lines);
+      return;
+  }
+
+}
 
 void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
   if (buffer.size() == 0) {
@@ -82,20 +161,21 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
   }
 
   LOGF(debug, "Decoding %d bytes", buffer.size());
-  mHasData = true;
-   
+
   // Cast the buffer to a vector of "lines" so we can easily iterate over them
   gsl::span<const HCalGBTLine> lines(reinterpret_cast<const HCalGBTLine*>(buffer.data()), buffer.size() / sizeof(HCalGBTLine));
-  for (auto const line : lines) {
-
-    // After a reset, we are looking for the first non-zero, non-idle, non-trigger line,
-    // which marks the first data line of the first sample of the event.
-    // Probably a good idea to add another check to see if we get the DAQH header and trailer patterns,
-    // since it has been observed that bit flip / shift corruptions can cause idle words to not be recognized as such
-    if ( isNullLine(line) | isIdleLine(line) ) {
+  for (const HCalGBTLine& line : lines) {
+    // Skip decoding padded zeroes, and also the trigger line
+    if (isNullLine(line)) {
       continue;
     }
-
+    
+    LOGF(debug, "%04X %08X %08X %08X %08X %08X %08X %08X", 
+         line.hdr(), line.link_id(), line.bx_cntr(), line.ob_cntr(), 
+         line.words[2].data, line.words[3].data, line.words[4].data,  
+         line.words[5].data, line.words[6].data, line.words[7].data
+         );
+    
     // Trigger line marks the boundary between events: flush accumulated per-event data
     if (isTriggerLine(line)) {
       if (mLinkSampleCountersEv[0] > 0 || mLinkSampleCountersEv[1] > 0) {
@@ -113,90 +193,23 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
     }
 
     int link_id = line.link_id();
+    processLine(line, mLinkContexts[link_id]);
+  }
 
-    // Don't process more lines for this link if we
-    // already got the expected number of samples
-    if (mLinkSampleCounters[link_id] == 16) {
-      continue;
+  LOGF(debug, "Decoding finished");
+  for (LinkContext& ctx : mLinkContexts) {
+    // If the data on any link wasn't readable, set this flag so
+    // other tasks can know to discard this event, if wanted
+    // TODO: set this flag on a per-link or per-chip basis?
+    if (ctx.state == LinkContext::State::Error) {
+      mIsDataValid = false;
     }
 
-    // If we're not currently in a data frame..
-    if (not mLinkFrameActive[link_id]) {
-
-      // ..then the next line should be the first line, i.e. DAQH words
-      if (not isDAQHLine(line)) {
-
-        // If it isn't, something is wrong. One possible case is that
-        // some bit shift/flip errors made the idle word unrecognizable, and
-        // thus we end up here, but without a DAQH line. 
-        // We can attempt to continue, and check if the next line is a DAQH line;
-        // if it is (and is identifiable as one) we can keep going.
-        if (mLinkExceptions[link_id] == 0) {
-          LOGF(warn, "Expected DAQH line but pattern was not matched - potential (severe) bit shift corruption in this trigger! (Link %02d, sample %02d)", link_id, mLinkSampleCounters[link_id]);
-          ++mLinkExceptions[link_id];
-          continue;
-        }
-        
-        // Otherwise, if the DAQH line still cannot be identified, then there is
-        // probably something very wrong, and the start of the frame cannot be 
-        // determined without guessing (which might be fine, but we don't know).
-        // So, stop decoding here and mark the result as invalid.
-        if (mLinkExceptions[link_id] > 0) {
-          LOGF(error, "Cannot determine start of DAQ frame! Data in this trigger is likely severely corrupted. Stopping decoding and marking this result as bad.");
-          mIsDataValid = false;
-          return;
-        }
-      }
-
-      // Otherwise, we found the DAQH line, and can continue as normal.
-      mLinkFrameActive[link_id] = true;
-      LOGF(debug, "--v-- Link %02d start of DAQ frame --v--", link_id);
-    }
-
-    LOGF(debug, "(L%02d, s%02d) %02X %02X %04X %08X %08X %08X %08X %08X %08X %08X", 
-                                                        mLinkLineCounters[link_id] + 1,
-                                                        mLinkSampleCounters[link_id] + 1,
-                                                        line.hdr(), 
-                                                        line.link_id(),  
-                                                        line.bx_cntr(),  
-                                                        line.ob_cntr(),  
-                                                        line.words[2].data,  
-                                                        line.words[3].data,  
-                                                        line.words[4].data,  
-                                                        line.words[5].data,
-                                                        line.words[6].data,
-                                                        line.words[7].data);
-    
-    if (mLinkFrameActive[link_id]) {
-
-      // In rare cases, bit shift corruptions in data can result in an erroneus sample count,
-      // so exit early to prevent segmentation faults
-      if (mLinkSampleCounters[link_id] > 16) {
-        LOGF(error, "Sample counter greater than number of samples! (%d)", mLinkSampleCounters[link_id]);
-      	return;
-      }
-      
-      mLinks[mLinkSampleCounters[link_id]][link_id].fillData(line, mLinkLineCounters[link_id]);     
-      ++mLinkLineCounters[link_id];
-
-      // Also accumulate per-event data in parallel
-      if (mLinkSampleCountersEv[link_id] <= 15) {
-        mLinksPerEv[mLinkSampleCountersEv[link_id]][link_id].fillData(line, mLinkLineCountersEv[link_id]);
-        ++mLinkLineCountersEv[link_id];
-        if (mLinkLineCountersEv[link_id] == 40) {
-          mLinkFrameActiveEv[link_id] = false;
-          mLinkLineCountersEv[link_id] = 0;
-          ++mLinkSampleCountersEv[link_id];
-        }
-      }
-
-      // 40 lines marks the end of a frame, always
-      if (mLinkLineCounters[link_id] == 40) {
-        LOGF(debug, "--^-- Link %02d end of DAQ frame --^--", link_id);
-        mLinkFrameActive[link_id] = false;
-        mLinkLineCounters[link_id] = 0;
-        ++mLinkSampleCounters[link_id];
-      }
+    // If a link context is still in the initial state, it means
+    // that the entirety of this payload was empty
+    // TODO: set this flag on a per-link or per-chip basis?
+    if (not (ctx.state == LinkContext::State::WaitingForFrame)) {
+      mHasData = true;
     }
   }
 
