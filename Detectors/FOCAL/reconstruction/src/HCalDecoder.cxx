@@ -39,8 +39,13 @@ void HCalDecoder::reset() {
 
     for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
       mLinks[sample][i].reset();
+      mLinksPerEv[sample][i].reset();
+      mLinkLineCountersEv[i] = 0;
+      mLinkSampleCountersEv[i] = 0;
+      mLinkFrameActiveEv[i] = false;
     }
   }
+  mEvents.clear();
 }
 
 bool HCalDecoder::isNullLine(HCalGBTLine ln) {
@@ -110,6 +115,18 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
       // This block is the normal execution path if everything is well
       LOGF(debug, "LinkContext %d filling data (sample %d, line %d)", ctx.id, ctx.samples, ctx.lines);
       mLinks[ctx.samples][ctx.id].fillData(line, ctx.lines);
+      
+      // Also accumulate per-event data in parallel
+      if (mLinkSampleCountersEv[link_id] <= 15) {
+        mLinksPerEv[mLinkSampleCountersEv[link_id]][link_id].fillData(line, mLinkLineCountersEv[link_id]);
+        ++mLinkLineCountersEv[link_id];
+        if (mLinkLineCountersEv[link_id] == 40) {
+          mLinkFrameActiveEv[link_id] = false;
+          mLinkLineCountersEv[link_id] = 0;
+          ++mLinkSampleCountersEv[link_id];
+        }
+      }
+      
       if ((ctx.lines++)+1 == constants::HCAL_NUM_GBT_LINES_PER_LINK) {
         if ((ctx.samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
           LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx.id, ctx.samples);
@@ -149,15 +166,31 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
   gsl::span<const HCalGBTLine> lines(reinterpret_cast<const HCalGBTLine*>(buffer.data()), buffer.size() / sizeof(HCalGBTLine));
   for (const HCalGBTLine& line : lines) {
     // Skip decoding padded zeroes, and also the trigger line
-    if (isNullLine(line) | isTriggerLine(line)) {
+    if (isNullLine(line)) {
       continue;
     }
-
+    
     LOGF(debug, "%04X %08X %08X %08X %08X %08X %08X %08X", 
          line.hdr(), line.link_id(), line.bx_cntr(), line.ob_cntr(), 
          line.words[2].data, line.words[3].data, line.words[4].data,  
          line.words[5].data, line.words[6].data, line.words[7].data
          );
+    
+    // Trigger line marks the boundary between events: flush accumulated per-event data
+    if (isTriggerLine(line)) {
+      if (mLinkSampleCountersEv[0] > 0 || mLinkSampleCountersEv[1] > 0) {
+        mEvents.push_back(mLinksPerEv);
+        for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
+          for (int j = 0; j < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++j) {
+            mLinksPerEv[j][i].reset();
+          }
+          mLinkLineCountersEv[i] = 0;
+          mLinkSampleCountersEv[i] = 0;
+          mLinkFrameActiveEv[i] = false;
+        }
+      }
+      continue;
+    }
 
     int link_id = line.link_id();
     processLine(line, mLinkContexts[link_id]);
@@ -178,5 +211,10 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
     if (not (ctx.state == LinkContext::State::WaitingForFrame)) {
       mHasData = true;
     }
+  }
+
+  // Flush the last in-progress event (final event in HBF has no trailing trigger line)
+  if (mLinkSampleCountersEv[0] > 0 || mLinkSampleCountersEv[1] > 0) {
+    mEvents.push_back(mLinksPerEv);
   }
 }

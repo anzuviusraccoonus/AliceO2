@@ -34,6 +34,7 @@ void customize(std::vector<ConfigParamSpec>& workflowOptions)
     {"askdistsft", VariantType::Bool, false, {"Subscribe to FLP/DISTSUBTIMEFRAME"}},
     {"no-pads", VariantType::Bool, false, {"Disable handling of pad data"}},
     {"no-pixels", VariantType::Bool, false, {"Disable handling of pixel data"}},
+    {"no-hcal", VariantType::Bool, false, {"Disable handling of hcal data"}},
     {"debugmode", VariantType::Bool, false, {"Run dedicated debug code"}},
     {"configKeyValues", VariantType::String, "", {"Semicolon separated key=value strings"}}};
   o2::raw::HBFUtilsInitializer::addConfigOption(options);
@@ -47,6 +48,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
 
   bool disablePads = cfgc.options().get<bool>("no-pads"),
        disablePixels = cfgc.options().get<bool>("no-pixels"),
+       disableHcal = cfgc.options().get<bool>("no-hcal"),
        askdiststf = cfgc.options().get<bool>("askdistsft"),
        debugmode = cfgc.options().get<bool>("debugmode");
   int outputSubspec = cfgc.options().get<int>("output-subspec");
@@ -54,7 +56,7 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
   o2::conf::ConfigurableParam::updateFromString(cfgc.options().get<std::string>("configKeyValues"));
 
   WorkflowSpec specs;
-  specs.emplace_back(o2::focal::reco_workflow::getRawDecoderSpec(askdiststf, outputSubspec, !disablePads, !disablePixels, debugmode));
+  specs.emplace_back(o2::focal::reco_workflow::getRawDecoderSpec(askdiststf, outputSubspec, !disablePads, !disablePixels, !disableHcal, debugmode));
 
   // configure dpl timer to inject correct firstTForbit: start from the 1st orbit of TF containing 1st sampled orbit
   o2::raw::HBFUtilsInitializer hbfIni(cfgc, specs);
