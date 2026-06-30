@@ -27,6 +27,8 @@ o2_add_library(FOCALReconstruction
         AliceO2::InfoLogger
         Microsoft.GSL::GSL)
 
+target_include_directories(O2lib-FOCALReconstruction BEFORE PRIVATE ${CMAKE_SOURCE_DIR}/DataFormats/Detectors/FOCAL/include)
+
 o2_target_root_dictionary(
         FOCALReconstruction
         HEADERS include/FOCALReconstruction/PadData.h

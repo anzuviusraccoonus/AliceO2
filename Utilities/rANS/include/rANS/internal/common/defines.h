@@ -16,7 +16,9 @@
 #ifndef RANS_INTERNAL_COMMON_DEFINES_H_
 #define RANS_INTERNAL_COMMON_DEFINES_H_
 
+#if __has_include(<version>)
 #include <version>
+#endif
 
 #ifdef RANS_AVX2
 #error RANS_AVX2 cannot be directly set

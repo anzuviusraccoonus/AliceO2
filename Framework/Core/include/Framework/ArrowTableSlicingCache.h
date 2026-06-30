@@ -16,6 +16,7 @@
 #include "Framework/ServiceHandle.h"
 #include <arrow/array.h>
 #include <gsl/span>
+#include <span>
 
 namespace o2::framework
 {

@@ -12,6 +12,7 @@
 #define O2_FRAMEWORK_CONFIGPARAMREGISTRY_H_
 
 #include "Framework/ConfigParamStore.h"
+#include "Framework/VariantPropertyTreeHelpers.h"
 #include <boost/property_tree/ptree.hpp>
 
 #include <concepts>
@@ -80,7 +81,26 @@ class ConfigParamRegistry
   [[nodiscard]] std::vector<ConfigParamSpec> const& specs() const;
 
   template <ConfigValueType T>
-  T get(const char* key) const;
+  T get(const char* key) const
+  {
+    try {
+      if constexpr (SimpleConfigValueType<T>) {
+        return mStore->store().get<T>(key);
+      } else if constexpr (StringConfigValueType<T>) {
+        return mStore->store().get<std::string>(key);
+      } else if constexpr (VectorConfigValueType<T>) {
+        return vectorFromBranch<typename T::value_type>(mStore->store().get_child(key));
+      } else if constexpr (Array2DLike<T>) {
+        return array2DFromBranch<typename T::element_t>(mStore->store().get_child(key));
+      } else if constexpr (LabeledArrayLike<T>) {
+        return labeledArrayFromBranch<typename T::element_t>(mStore->store().get_child(key));
+      }
+    } catch (std::exception& e) {
+      throw std::invalid_argument(std::string("missing option: ") + key + " (" + e.what() + ")");
+    } catch (...) {
+      throw std::invalid_argument(std::string("error parsing option: ") + key);
+    }
+  }
 
   template <typename T>
   T get(const char* key) const;

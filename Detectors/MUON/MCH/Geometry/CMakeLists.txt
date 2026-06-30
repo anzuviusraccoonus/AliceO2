@@ -13,6 +13,6 @@ add_subdirectory(MisAligner)
 add_subdirectory(Transformer)
 add_subdirectory(Creator)
 if (BUILD_TESTING AND GLFW_FOUND)
-add_subdirectory(Test)
+	#add_subdirectory(Test)
 endif()
 

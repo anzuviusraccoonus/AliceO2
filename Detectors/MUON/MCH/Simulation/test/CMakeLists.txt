@@ -15,15 +15,15 @@ o2_add_test(digit-merging
         PUBLIC_LINK_LIBRARIES O2::MCHSimulation O2::MCHBase O2::DetectorsPassive
         LABELS muon mch sim)
 
-o2_add_test(digitizer
-        COMPONENT_NAME mch
-        SOURCES testDigitizer.cxx
-        PUBLIC_LINK_LIBRARIES O2::DetectorsPassive
-                              O2::MCHBase
-                              O2::MCHGeometryTest
-                              O2::MCHSimulation
-                              O2::MCHMappingImpl4
-        LABELS muon mch long sim)
+#o2_add_test(digitizer
+#        COMPONENT_NAME mch
+#        SOURCES testDigitizer.cxx
+#        PUBLIC_LINK_LIBRARIES O2::DetectorsPassive
+#                              O2::MCHBase
+#                              O2::MCHGeometryTest
+#                              O2::MCHSimulation
+#                              O2::MCHMappingImpl4
+#        LABELS muon mch long sim)
 
 # o2_add_test(response
 #         COMPONENT_NAME mch

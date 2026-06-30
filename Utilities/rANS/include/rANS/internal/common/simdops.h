@@ -37,7 +37,7 @@ inline __m128i load(gsl::span<const T, getElementCount<T>(SIMDWidth::SSE)> v) no
   return _mm_load_si128(reinterpret_cast<const __m128i*>(v.data()));
 };
 
-template <typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+template <typename T, std::enable_if_t<std::is_integral_v<T> && !std::is_const_v<T>, bool> = true>
 inline __m128i load(gsl::span<T, getElementCount<T>(SIMDWidth::SSE)> v) noexcept
 {
   return _mm_load_si128(reinterpret_cast<const __m128i*>(v.data()));
@@ -83,7 +83,7 @@ inline __m256i load(gsl::span<const T, getElementCount<T>(SIMDWidth::AVX)> v) no
   return _mm256_load_si256(reinterpret_cast<const __m256i*>(v.data()));
 };
 
-template <typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+template <typename T, std::enable_if_t<std::is_integral_v<T> && !std::is_const_v<T>, bool> = true>
 inline __m256i load(gsl::span<T, getElementCount<T>(SIMDWidth::AVX)> v) noexcept
 {
   return _mm256_load_si256(reinterpret_cast<const __m256i*>(v.data()));
