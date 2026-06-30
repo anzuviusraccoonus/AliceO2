@@ -60,13 +60,25 @@ class HCalDecoder {
 
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getData() { return mLinks; }
 
+  // Per-event access
+  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getEventData(int eventIndex) { return mEvents.at(eventIndex); }
+  int getNumEvents() const { return static_cast<int>(mEvents.size()); }
   int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
 
  private:
-  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
-  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
   bool mIsDataValid;
   bool mHasData;
+
+  // Per-HBF storage
+  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
+  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
+
+  // Per-event storage (trigger line separates events)
+  std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinksPerEv = {};
+  std::vector<std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>> mEvents = {};
+  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkLineCountersEv = {};
+  std::array<int, constants::HCAL_NUM_GBT_LINKS> mLinkSampleCountersEv = {};
+  std::array<bool, constants::HCAL_NUM_GBT_LINKS> mLinkFrameActiveEv = {};
   
   ClassDefNV(HCalDecoder, 1);
 };
@@ -74,4 +86,3 @@ class HCalDecoder {
 } // namespace o2::focal
 
 #endif // ALICEO2_FOCAL_HCALDECODER_H
-//
