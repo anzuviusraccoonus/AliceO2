@@ -20,6 +20,8 @@ constexpr int HCAL_NUM_GBT_LINKS = 2;
 constexpr int HCAL_NUM_ROCS_PER_LINK = 2;
 constexpr int HCAL_NUM_SAMPLES_PER_EVENT = 16;
 constexpr int HCAL_NUM_GBT_LINES_PER_LINK = 40;
+constexpr int HCAL_NUM_COLUMNS = 16;
+constexpr int HCAL_NUM_ROWS = 16;
 
 // Pads
 constexpr int PADLAYER_MODULE_NCHANNELS = 72;
