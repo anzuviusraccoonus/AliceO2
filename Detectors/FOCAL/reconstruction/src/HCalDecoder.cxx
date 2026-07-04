@@ -26,7 +26,11 @@ using namespace o2::focal;
 
 void HCalDecoder::reset() {
   LOGF(debug, "Resetting HCal decoder");
-
+  
+   mIdleBeforeL1Count_Link0 = 0;
+   mIdleBeforeL1_Link0 = 0;
+   mIdleBeforeL1Count_Link1 = 0;
+   mIdleBeforeL1_Link1 = 0;
   // TODO: put these attributes on each link or ROC?
   mHasData = false;
   mIsDataValid = true;
