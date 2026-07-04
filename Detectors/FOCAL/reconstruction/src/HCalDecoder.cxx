@@ -86,15 +86,21 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
     case LinkContext::State::WaitingForFrame:
       LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
       if (isIdleLine(line)) {
-        idleBeforeL1Count+=1;
+        mIdleBeforeL1Count+=1;
         return;
       else if (isL1Line(line)){
-        idleBeforeL1 = idleBeforeL1Count;
-        idleBeforeL1Count = 0;
+        mIdleBeforeL1 = mIdleBeforeL1Count;
+        mIdleBeforeL1Count = 0;
       }
       } else if (isDAQHLine(line)) {
-        LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
-        ctx.state = LinkContext::State::ReadingFrame;
+        if(mIdleBeforeL1 > mMaxL1Dist){
+          LOGF(debug, "Distance between trigger and start of L1 above the maximum");
+        }
+
+        else{
+          LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
+          ctx.state = LinkContext::State::ReadingFrame;
+        }
       } else {
         LOGF(warn, "LinkContext %d expected IDLE or DAQH line but got neither - potential corruption in event", ctx.id);
         ctx.state = LinkContext::State::Error;
