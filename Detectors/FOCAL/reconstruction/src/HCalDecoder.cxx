@@ -36,6 +36,9 @@ void HCalDecoder::reset() {
     mLinkContexts[i].samples = 0;
     mLinkContexts[i].lines = 0;
     mLinkContexts[i].id = i;
+    mLinkContexts[i].gotL1A = false;
+    mLinkContexts[i].distL1A = 0;
+    mLinkContexts[i].numL1A = 0;
 
     for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
       mLinks[sample][i].reset();
@@ -82,6 +85,15 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
     case LinkContext::State::WaitingForFrame:
       LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
       if (isIdleLine(line)) {
+        if (line.cmd() == 0x4b4b4b4b) { // check if IDLE line has L1A command
+          ++ctx.numL1A;
+          if (not ctx.gotL1A) {
+            LOGF(debug, "LinkContext %d got L1A command; distance = %d", ctx.id, ctx.distL1A);
+            ctx.gotL1A = true;
+          }
+        } else if (not ctx.gotL1A) {
+          ++ctx.distL1A;
+        }
         return;
       } else if (isDAQHLine(line)) {
         LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
@@ -171,8 +183,8 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
       continue;
     }
     
-    LOGF(debug, "%04X %08X %08X %08X %08X %08X %08X %08X", 
-         line.hdr(), line.link_id(), line.bx_cntr(), line.ob_cntr(), 
+    LOGF(debug, "%08X %08X %08X %08X %08X %08X %08X %08X", 
+         line.words[0].data, line.words[1].data,
          line.words[2].data, line.words[3].data, line.words[4].data,  
          line.words[5].data, line.words[6].data, line.words[7].data
          );

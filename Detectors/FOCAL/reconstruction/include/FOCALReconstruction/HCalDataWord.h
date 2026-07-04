@@ -63,6 +63,7 @@ namespace o2::focal {
     uint32_t link_id()  const { return (words[0] >> 8)  & 0xFF ; }
     uint32_t bx_cntr()  const { return (words[0] >> 16) & 0xFFF; }
     uint32_t ob_cntr()  const { return  words[1]               ; }
+    uint32_t cmd()      const { return  words[6]               ; }
   };
 
 } // namespace o2::focal

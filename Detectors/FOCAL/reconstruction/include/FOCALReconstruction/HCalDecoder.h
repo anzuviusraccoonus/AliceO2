@@ -35,10 +35,13 @@ struct LinkContext {
     Error
   };
 
-  State state = State::WaitingForFrame;
-  int samples = 0;
-  int lines   = 0;
-  int id      = -1;
+  State state   = State::WaitingForFrame;
+  bool  gotL1A  = false;
+  int   distL1A = 0;
+  int   numL1A  = 0;
+  int   samples = 0;
+  int   lines   = 0;
+  int   id      = -1;
 };
 
 class HCalDecoder {
@@ -64,6 +67,8 @@ class HCalDecoder {
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getEventData(int eventIndex) { return mEvents.at(eventIndex); }
   int getNumEvents() const { return static_cast<int>(mEvents.size()); }
   int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
+  int getL1ADistance(int link_id) { return mLinkContexts[link_id].distL1A; }
+  int getNumL1ACmds(int link_id) { return mLinkContexts[link_id].numL1A; }
 
  private:
   bool mIsDataValid;
