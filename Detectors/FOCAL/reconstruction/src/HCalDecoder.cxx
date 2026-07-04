@@ -60,6 +60,10 @@ bool HCalDecoder::isIdleLine(HCalGBTLine ln) {
            (ln.words[5] == 0xACCCCCCC) ) == 1;
 }
 
+bool HCalDecoder::isL1Line(HCalGBTLine ln) {
+  return ( (ln.words[4] == 0x4b4b4b4b)  == 1;
+}
+
 bool HCalDecoder::isTriggerLine(HCalGBTLine ln) {
   return ( (ln.words[0] == 0xBBBBBBBB) == 1 );
 }
