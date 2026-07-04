@@ -46,15 +46,16 @@ class HCalDecoder {
   HCalDecoder() = default;
   ~HCalDecoder() = default;
 
+
+  // L1 trigger distance checks
   bool mL1FilterMode = false;
   int mIdleBeforeL1Count_Link0;
   int mIdleBeforeL1_Link0;
-
   int mIdleBeforeL1Count_Link1;
   int mIdleBeforeL1_Link1;
-
-  int mMaxL1Dist_Link0 = ;
-  int mMaxL1Dist_Link1 = ;
+  //hardcode the changes here once the distances have been determined and change the filter mode to true
+  int mMaxL1Dist_Link0 = 0;
+  int mMaxL1Dist_Link1 = 0;
 
   void reset();
   void decodeBuffer(gsl::span<const char> buffer);
