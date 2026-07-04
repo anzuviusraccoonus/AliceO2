@@ -86,7 +86,12 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
     case LinkContext::State::WaitingForFrame:
       LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
       if (isIdleLine(line)) {
+        idleBeforeL1Count+=1;
         return;
+      else if (isL1Line(line)){
+        idleBeforeL1 = idleBeforeL1Count;
+        idleBeforeL1Count = 0;
+      }
       } else if (isDAQHLine(line)) {
         LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
         ctx.state = LinkContext::State::ReadingFrame;
