@@ -86,11 +86,14 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
     case LinkContext::State::WaitingForFrame:
       LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
       if (isIdleLine(line)) {
-        mIdleBeforeL1Count+=1;
+        mIdleBeforeL1Count_Link0+=1;
+        mIdleBeforeL1Count_Link1+=1;
         return;
       else if (isL1Line(line)){
-        mIdleBeforeL1 = mIdleBeforeL1Count;
-        mIdleBeforeL1Count = 0;
+        mIdleBeforeL1_Link0 = mIdleBeforeL1Count_Link0;
+        mIdleBeforeL1_Link1 = mIdleBeforeL1Count_Link1;
+        mIdleBeforeL1Count_Link0 = 0
+        mIdleBeforeL1Count_Link1 = 0;
       }
       } else if (isDAQHLine(line)) {
         if(mIdleBeforeL1 > mMaxL1Dist){
