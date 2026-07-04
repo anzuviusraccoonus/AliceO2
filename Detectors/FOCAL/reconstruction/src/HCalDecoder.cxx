@@ -29,8 +29,10 @@ void HCalDecoder::reset() {
   
    mIdleBeforeL1Count_Link0 = 0;
    mIdleBeforeL1_Link0 = 0;
+   mFoundL1_Link0 = false;
    mIdleBeforeL1Count_Link1 = 0;
    mIdleBeforeL1_Link1 = 0;
+   mFoundL1_Link1 = false;
   // TODO: put these attributes on each link or ROC?
   mHasData = false;
   mIsDataValid = true;
