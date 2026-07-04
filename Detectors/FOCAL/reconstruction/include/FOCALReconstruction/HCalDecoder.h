@@ -46,6 +46,16 @@ class HCalDecoder {
   HCalDecoder() = default;
   ~HCalDecoder() = default;
 
+  bool mL1FilterMode = false;
+  int mIdleBeforeL1Count_Link0;
+  int mIdleBeforeL1_Link0;
+
+  int mIdleBeforeL1Count_Link1;
+  int mIdleBeforeL1_Link1;
+
+  int mMaxL1Dist_Link0 = ;
+  int mMaxL1Dist_Link1 = ;
+
   void reset();
   void decodeBuffer(gsl::span<const char> buffer);
   void processLine(HCalGBTLine line, LinkContext& ctx);
