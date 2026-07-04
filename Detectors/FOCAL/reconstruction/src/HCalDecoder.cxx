@@ -94,10 +94,17 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
         mIdleBeforeL1Count_Link1+=1;
         return;
       else if (isL1Line(line)){
-        mIdleBeforeL1_Link0 = mIdleBeforeL1Count_Link0;
-        mIdleBeforeL1_Link1 = mIdleBeforeL1Count_Link1;
-        mIdleBeforeL1Count_Link0 = 0
-        mIdleBeforeL1Count_Link1 = 0;
+        if(!mFoundL1_Link0){
+          mIdleBeforeL1_Link0 = mIdleBeforeL1Count_Link0;
+          mFoundL1_Link0 = true;
+          mIdleBeforeL1Count_Link0 = 0
+        }
+        if(!mFoundL1_Link1){
+          mIdleBeforeL1_Link1 = mIdleBeforeL1Count_Link1;
+          mFoundL1_Link1 = true;
+          mIdleBeforeL1Count_Link1 = 0
+        }
+        
       }
       } else if (isDAQHLine(line)) {
         if(mIdleBeforeL1 > mMaxL1Dist){
