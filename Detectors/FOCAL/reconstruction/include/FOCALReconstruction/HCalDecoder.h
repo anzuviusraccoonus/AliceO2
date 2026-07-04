@@ -53,6 +53,7 @@ class HCalDecoder {
   bool isTriggerLine(HCalGBTLine line);
   bool isNullLine(HCalGBTLine line);
   bool isIdleLine(HCalGBTLine line);
+  bool isL1Line(HCalGBTLine line);
   bool isDAQHLine(HCalGBTLine line);
   
   bool hasEventData() { return mHasData; }
