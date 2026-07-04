@@ -95,6 +95,12 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
       } else if (isDAQHLine(line)) {
         if(mIdleBeforeL1 > mMaxL1Dist){
           LOGF(debug, "Distance between trigger and start of L1 above the maximum");
+          
+          if(mL1FilterMode==false){
+            LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
+            ctx.state = LinkContext::State::ReadingFrame;
+          }
+          
         }
 
         else{
