@@ -9,8 +9,8 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-/// \file rawReaderFileNew.cxx
-/// \author Markus Fasel <markus.fasel@cern.ch>, Oak Ridge National Laboratory
+
+// o2-focal-rawreader-hcal-rootify2 -i /Users/nathansonnina/AliceO2/focal/reconstruction/run_3428.raw -o FOCALHCALData_3428.root -r RORC
 
 #include <bitset>
 #include <iostream>
@@ -21,108 +21,64 @@
 #include <TFile.h>
 #include <TTree.h>
 
-
 #include "CommonConstants/Triggers.h"
 #include "DetectorsRaw/RawFileReader.h"
 #include "DetectorsRaw/RDHUtils.h"
+#include "DataFormatsFOCAL/Constants.h"
+#include "DataFormatsFOCAL/Event.h"
 #include "FOCALReconstruction/HCalDataWord.h"
 #include "FOCALReconstruction/HCalGBTLink.h"
 #include "FOCALReconstruction/HCalDecoder.h"
 #include "Headers/RDHAny.h"
-#include "DataFormatsFOCAL/Constants.h"
 
 namespace bpo = boost::program_options;
 
-// Data for tree
-struct HCALTreeData {
-  static constexpr int NSAMPLES  = o2::focal::constants::HCAL_NUM_SAMPLES_PER_EVENT; // 16
-  static constexpr int NLINKS    = o2::focal::constants::HCAL_NUM_GBT_LINKS;         // 2
-  static constexpr int NROCS     = o2::focal::constants::HCAL_NUM_ROCS_PER_LINK;     // 2
-  static constexpr int NHALVES   = 2;
-  static constexpr int NCHANNELS = o2::focal::constants::HCAL_NUM_CHANNELS_PER_ROC_HALF; // 36
+using namespace o2::focal::constants;
 
-  int mBCid;
-  int mOrbit;
-  int mADC[NSAMPLES][NLINKS][NROCS][NHALVES][NCHANNELS];
-  int mTOA[NSAMPLES][NLINKS][NROCS][NHALVES][NCHANNELS];
-  int mTOT[NSAMPLES][NLINKS][NROCS][NHALVES][NCHANNELS];
-  int mCalib0[NROCS];
-  int mCalib1[NROCS];
-
-  TTree* mTree = nullptr;
-
-  void connectTree(TTree* hcaltree)
-  {
-    mTree = hcaltree;
-    mTree->Branch("ORBIT", &mOrbit, "ORBIT/I");
-    mTree->Branch("BCID", &mBCid, "BCID/I");
-    mTree->Branch("ADC", &mADC, "ADC[16][2][2][2][36]/I");
-    mTree->Branch("TOA", &mTOA, "TOA[16][2][2][2][36]/I");
-    mTree->Branch("TOT", &mTOT, "TOT[16][2][2][2][36]/I");
-    mTree->Branch("CALIB0", &mCalib0, "CALIB0[2]/I");
-    mTree->Branch("CALIB1", &mCalib1, "CALIB1[2]/I");
-
+// Fill an HCALEvent from the decoded GBT links for one HBF.
+bool fillHCALEvent(gsl::span<const char> hcalrawdata,
+                   const o2::InteractionRecord& ir,
+                   o2::focal::HCALEvent& event)
+{
+  o2::focal::HCalDecoder decoder;
+  decoder.reset();
+  decoder.decodeBuffer(hcalrawdata);
+  if (!decoder.hasEventData()) {
+    return false;
   }
 
-  void reset()
-  {
-    mBCid = 0;
-    mOrbit = 0;
-    memset(mADC, 0, sizeof(mADC));
-    memset(mTOA, 0, sizeof(mTOA));
-    memset(mTOT, 0, sizeof(mTOT));
-    memset(mCalib0, 0, sizeof(mCalib0));
-    memset(mCalib1, 0, sizeof(mCalib1));
-  }
+  event.reset();
+  event.mBC    = ir.bc;
+  event.mOrbit = ir.orbit;
 
-  void setInteractionRecord(const o2::InteractionRecord& ir)
-  {
-    mBCid = ir.bc;
-    mOrbit = ir.orbit;
-  }
-
-  void fill(const std::array<std::array<o2::focal::HCalGBTLink, NLINKS>, NSAMPLES>& links)
-  {
-    for (int sample = 0; sample < NSAMPLES; ++sample) {
-      for (int link_id = 0; link_id < NLINKS; ++link_id) {
-        auto currentLink = links[sample][link_id];
-        for (int roc_id = 0; roc_id < NROCS; ++roc_id) {
-          auto currentROC = currentLink.getROC(roc_id);
-          for (int half = 0; half < NHALVES; ++half) {
-            auto currentHalf = currentROC.getChipHalf(half);
-            for (int chn = 0; chn < NCHANNELS; ++chn) {
-              auto ch = currentHalf.getChannel(chn);
-              mADC[sample][link_id][roc_id][half][chn] = ch.adc;
-              mTOT[sample][link_id][roc_id][half][chn] = ch.tot;
-              mTOA[sample][link_id][roc_id][half][chn] = ch.toa;
-            }
+  auto links = decoder.getData();
+  for (int sample = 0; sample < HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
+    for (int link_id = 0; link_id < HCAL_NUM_GBT_LINKS; ++link_id) {
+      auto currentLink = links[sample][link_id];
+      for (int roc_id = 0; roc_id < HCAL_NUM_ROCS_PER_LINK; ++roc_id) {
+        auto currentROC = currentLink.getROC(roc_id);
+        for (int half = 0; half < 2; ++half) {
+          auto currentHalf = currentROC.getChipHalf(half);
+          event.mHeader[sample][link_id][roc_id][half] = currentHalf.getHeader().data;
+          auto cmn   = currentHalf.getCommonMode();
+          auto calib = currentHalf.getCalibration();
+          event.mCMN_ADC  [sample][link_id][roc_id][half] = cmn.adc;
+          event.mCMN_TOA  [sample][link_id][roc_id][half] = cmn.toa;
+          event.mCMN_TOT  [sample][link_id][roc_id][half] = cmn.tot;
+          event.mCalib_ADC[sample][link_id][roc_id][half] = calib.adc;
+          event.mCalib_TOA[sample][link_id][roc_id][half] = calib.toa;
+          event.mCalib_TOT[sample][link_id][roc_id][half] = calib.tot;
+          for (int chn = 0; chn < HCAL_NUM_CHANNELS_PER_ROC_HALF; ++chn) {
+            auto ch = currentHalf.getChannel(chn);
+            event.mADC[sample][link_id][roc_id][half][chn] = ch.adc;
+            event.mTOA[sample][link_id][roc_id][half][chn] = ch.toa;
+            event.mTOT[sample][link_id][roc_id][half][chn] = ch.tot;
           }
         }
       }
     }
   }
-
-  void fillTree()
-  {
-    mTree->Fill();
-  }
-};
-
-int convertHCALData(gsl::span<const char> hcalrawdata, const o2::InteractionRecord& currentir, HCALTreeData& rootified)
-{
-    o2::focal::HCalDecoder decoder;
-
-  decoder.reset();
-  decoder.decodeBuffer(hcalrawdata);   
-  if (!decoder.hasEventData()) { return 0; }
-
-  auto links = decoder.getData();  
-  rootified.reset();
-  rootified.setInteractionRecord(currentir);
-  rootified.fill(links);
-  rootified.fillTree();
-  return 1;
-
+  return true;
 }
 
 int main(int argc, char** argv)
@@ -202,6 +158,8 @@ int main(int argc, char** argv)
     readout = o2::raw::RawFileReader::CRU;
   }
 
+  // If the input is a .cfg file, pass it to the RawFileReader constructor which
+  // knows how to parse the ini-style config format. Otherwise add raw files directly.
   const bool isCfgFile = rawfilename.size() > 4 &&
                          rawfilename.compare(rawfilename.size() - 4, 4, ".cfg") == 0;
   o2::raw::RawFileReader reader(isCfgFile ? rawfilename : "");
@@ -220,13 +178,14 @@ int main(int argc, char** argv)
 
   std::unique_ptr<TFile> rootfilewriter(TFile::Open(rootfilename.data(), "RECREATE"));
   rootfilewriter->cd();
-  TTree* hcaltree = new TTree("HCALData", "HCALData");
-  hcaltree->SetAutoSave(0); //added to avoid partial duplicates being saved in the root tree, uncomment to change this for backup purposes
-  HCALTreeData rootified;
-  rootified.connectTree(hcaltree);
+  // Tree and branch names match the o2-focal-event-writer-workflow output format
+  // so that analysis macros written for that workflow work without modification.
+  TTree* hcaltree = new TTree("o2sim", "o2sim");
+  hcaltree->SetAutoSave(0);
+  std::vector<o2::focal::HCALEvent>* tfHcalEvents = new std::vector<o2::focal::HCALEvent>();
+  hcaltree->Branch("FOCALHCAL", &tfHcalEvents);
 
   int nHBFprocessed = 0, nTFprocessed = 0, nEventsProcessed = 0;
-  std::map<int, int> nEvnetsHBF;
   while (1) {
     int tfID = reader.getNextTFToRead();
     if (tfID >= reader.getNTimeFrames()) {
@@ -234,6 +193,7 @@ int main(int argc, char** argv)
       break;
     }
     std::vector<char> rawtf; // where to put extracted data
+    tfHcalEvents->clear();
     for (int il = 0; il < reader.getNLinks(); il++) {
       auto& link = reader.getLink(il);
 
@@ -254,16 +214,13 @@ int main(int argc, char** argv)
           if (trigger & o2::trigger::SOT || trigger & o2::trigger::HB) {
             if (o2::raw::RDHUtils::getStop(rdh)) {
               LOG(debug) << "Stop bit received - processing payload";
-              auto nevents = convertHCALData(hbfbuffer, currentir, rootified);
+              o2::focal::HCALEvent event;
+              if (fillHCALEvent(hbfbuffer, currentir, event)) {
+                tfHcalEvents->push_back(event);
+                nEventsProcessed++;
+              }
               hbfbuffer.clear();
               nHBFprocessed++;
-              nEventsProcessed += nevents;
-              auto found = nEvnetsHBF.find(nevents);
-              if (found == nEvnetsHBF.end()) {
-                nEvnetsHBF[nevents] = 1;
-              } else {
-                found->second++;
-              }
             } else {
               LOG(debug) << "New HBF or Timeframe";
               hbfbuffer.clear();
@@ -295,14 +252,10 @@ int main(int argc, char** argv)
         currentpos += o2::raw::RDHUtils::getOffsetToNext(rdh);
       }
     }
+    hcaltree->Fill();
     reader.setNextTFToRead(++tfID);
     nTFprocessed++;
   }
   rootfilewriter->Write();
-  LOG(info) << "Processed " << nTFprocessed << " timeframes, " << nHBFprocessed << " HBFs";
-  LOG(info) << "Analyzed " << nEventsProcessed << " events:";
-  LOG(info) << "=============================================================";
-  for (auto& [nevents, nHBF] : nEvnetsHBF) {
-    LOG(info) << "  " << nevents << " event(s)/HBF: " << nHBF << " HBFs ...";
-  }
+  LOG(info) << "Processed " << nTFprocessed << " timeframes, " << nHBFprocessed << " HBFs, " << nEventsProcessed << " events";
 }
