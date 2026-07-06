@@ -22,7 +22,28 @@
 #include <fairlogger/Logger.h>
 #include "FOCALReconstruction/HCalDecoder.h"
 
+// chrono imports for performance testing purposes
+// feel free to remove for production
+#include <chrono>
+using std::chrono::high_resolution_clock;
+using std::chrono::duration_cast;
+using std::chrono::duration;
+using std::chrono::milliseconds;
+using std::chrono::microseconds;
+
 using namespace o2::focal;
+
+HCalDecoder::HCalDecoder() {
+  for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
+    mLinkContexts[i] = new LinkContext();
+  }
+}
+
+HCalDecoder::~HCalDecoder() {
+  for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
+    delete mLinkContexts[i];
+  }
+}
 
 void HCalDecoder::reset() {
   LOGF(debug, "Resetting HCal decoder");
@@ -32,13 +53,13 @@ void HCalDecoder::reset() {
   mIsDataValid = true;
 
   for (int i = 0; i < constants::HCAL_NUM_GBT_LINKS; ++i) {
-    mLinkContexts[i].state = LinkContext::State::WaitingForFrame;
-    mLinkContexts[i].samples = 0;
-    mLinkContexts[i].lines = 0;
-    mLinkContexts[i].id = i;
-    mLinkContexts[i].gotL1A = false;
-    mLinkContexts[i].distL1A = 0;
-    mLinkContexts[i].numL1A = 0;
+    mLinkContexts[i]->state = LinkContext::State::WaitingForFrame;
+    mLinkContexts[i]->samples = 0;
+    mLinkContexts[i]->lines = 0;
+    mLinkContexts[i]->id = i;
+    mLinkContexts[i]->gotL1A = false;
+    mLinkContexts[i]->distL1A = 0;
+    mLinkContexts[i]->numL1A = 0;
 
     for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
       mLinks[sample][i].reset();
@@ -79,28 +100,28 @@ bool HCalDecoder::isDAQHLine(HCalGBTLine ln) {
            ( (dw3 & headerPattern) == headerPattern) ) == 1;
 }
 
-void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
+void HCalDecoder::processLine(HCalGBTLine line, LinkContext* ctx) {
   int link_id = line.link_id();
-  switch (ctx.state) {
+  switch (ctx->state) {
     case LinkContext::State::WaitingForFrame:
-      LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx.id);
+      LOGF(debug, "LinkContext %d is in state WaitingForFrame", ctx->id);
       if (isIdleLine(line)) {
         if (line.cmd() == 0x4b4b4b4b) { // check if IDLE line has L1A command
-          ++ctx.numL1A;
-          if (not ctx.gotL1A) {
-            LOGF(debug, "LinkContext %d got L1A command; distance = %d", ctx.id, ctx.distL1A);
-            ctx.gotL1A = true;
+          ++ctx->numL1A;
+          if (not ctx->gotL1A) {
+            LOGF(debug, "LinkContext %d got L1A command; distance = %d", ctx->id, ctx->distL1A);
+            ctx->gotL1A = true;
           }
-        } else if (not ctx.gotL1A) {
-          ++ctx.distL1A;
+        } else if (not ctx->gotL1A) {
+          ++ctx->distL1A;
         }
         return;
       } else if (isDAQHLine(line)) {
-        LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx.id);
-        ctx.state = LinkContext::State::ReadingFrame;
+        LOGF(debug, "LinkContext %d got DAQH line; state transition -> ReadingFrame", ctx->id);
+        ctx->state = LinkContext::State::ReadingFrame;
       } else {
-        LOGF(warn, "LinkContext %d expected IDLE or DAQH line but got neither - potential corruption in event", ctx.id);
-        ctx.state = LinkContext::State::Error;
+        LOGF(warn, "LinkContext %d expected IDLE or DAQH line but got neither - potential corruption in event", ctx->id);
+        ctx->state = LinkContext::State::Error;
         return;
       }
 
@@ -108,26 +129,26 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
     // the state transition to ReadingFrame also reads the DAQH line
 
     case LinkContext::State::ReadingFrame:
-      LOGF(debug, "LinkContext %d is in state ReadingFrame", ctx.id);
+      LOGF(debug, "LinkContext %d is in state ReadingFrame", ctx->id);
 
       // Sometimes we get a DAQH line that is followed up by an IDLE,
       // rarely with a small number of actual data lines first - not sure why
       if (isIdleLine(line)) {
-        LOGF(warn, "LinkContext %d got IDLE line in a DAQ frame - sample data incomplete (%d lines read in sample %d)", ctx.id, ctx.lines, ctx.samples);
-        ctx.lines = 0;
-        if ((ctx.samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
-          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx.id, ctx.samples);
-          ctx.state = LinkContext::State::Finished;
+        LOGF(warn, "LinkContext %d got IDLE line in a DAQ frame - sample data incomplete (%d lines read in sample %d)", ctx->id, ctx->lines, ctx->samples);
+        ctx->lines = 0;
+        if ((ctx->samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
+          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx->id, ctx->samples);
+          ctx->state = LinkContext::State::Finished;
         } else {
-          ctx.state = LinkContext::State::WaitingForFrame;
+          ctx->state = LinkContext::State::WaitingForFrame;
         }
 
         break;
       }
 
       // This block is the normal execution path if everything is well
-      LOGF(debug, "LinkContext %d filling data (sample %d, line %d)", ctx.id, ctx.samples, ctx.lines);
-      mLinks[ctx.samples][ctx.id].fillData(line, ctx.lines);
+      LOGF(debug, "LinkContext %d filling data (sample %d, line %d)", ctx->id, ctx->samples, ctx->lines);
+      mLinks[ctx->samples][ctx->id].fillData(line, ctx->lines);
       
       // Also accumulate per-event data in parallel
       if (mLinkSampleCountersEv[link_id] <= 15) {
@@ -140,29 +161,29 @@ void HCalDecoder::processLine(HCalGBTLine line, LinkContext& ctx) {
         }
       }
       
-      if ((ctx.lines++)+1 == constants::HCAL_NUM_GBT_LINES_PER_LINK) {
-        if ((ctx.samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
-          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx.id, ctx.samples);
-          ctx.state = LinkContext::State::Finished;
+      if ((ctx->lines++)+1 == constants::HCAL_NUM_GBT_LINES_PER_LINK) {
+        if ((ctx->samples++)+1 == constants::HCAL_NUM_SAMPLES_PER_EVENT) {
+          LOGF(debug, "LinkContext %d read %d samples; state transition -> Finished", ctx->id, ctx->samples);
+          ctx->state = LinkContext::State::Finished;
         } else {
-          LOGF(debug, "LinkContext %d read %d lines; state transition -> WaitingForFrame", ctx.id, ctx.lines);
-          ctx.lines = 0;
-          ctx.state = LinkContext::State::WaitingForFrame;
+          LOGF(debug, "LinkContext %d read %d lines; state transition -> WaitingForFrame", ctx->id, ctx->lines);
+          ctx->lines = 0;
+          ctx->state = LinkContext::State::WaitingForFrame;
         }
       }
 
       return;
 
     case LinkContext::State::Finished:
-      LOGF(debug, "LinkContext %d is in state Finished", ctx.id);
+      LOGF(debug, "LinkContext %d is in state Finished", ctx->id);
       return;
 
     case LinkContext::State::Error:
-      LOGF(debug, "LinkContext %d is in state Error", ctx.id);
+      LOGF(debug, "LinkContext %d is in state Error", ctx->id);
       return;
       
     default:
-      LOGF(error, "LinkContext %d is in an unknown state! Samples read: %d    Lines read: %d", ctx.id, ctx.samples, ctx.lines);
+      LOGF(error, "LinkContext %d is in an unknown state! Samples read: %d    Lines read: %d", ctx->id, ctx->samples, ctx->lines);
       return;
   }
 
@@ -174,6 +195,7 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
   }
 
   LOGF(debug, "Decoding %d bytes", buffer.size());
+  auto t_start = high_resolution_clock::now(); // perf testing
 
   // Cast the buffer to a vector of "lines" so we can easily iterate over them
   gsl::span<const HCalGBTLine> lines(reinterpret_cast<const HCalGBTLine*>(buffer.data()), buffer.size() / sizeof(HCalGBTLine));
@@ -207,21 +229,35 @@ void HCalDecoder::decodeBuffer(gsl::span<const char> buffer) {
 
     int link_id = line.link_id();
     processLine(line, mLinkContexts[link_id]);
+
+    bool exitEarly = true;
+    for (LinkContext* ctx : mLinkContexts) {
+      if ( not ((ctx->state == LinkContext::State::Finished) ||
+                (ctx->state == LinkContext::State::Error)) ) {
+           exitEarly = false;
+      }
+    }
+
+    if (exitEarly) { break; }
   }
 
   LOGF(debug, "Decoding finished");
-  for (LinkContext& ctx : mLinkContexts) {
+  auto t_end = high_resolution_clock::now(); // perf testing
+  auto us = duration_cast<microseconds>(t_end - t_start);
+  LOGF(info, "decodeEvent took %f µs / kB)", us.count() / (buffer.size() / 1024.));
+
+  for (LinkContext* ctx : mLinkContexts) {
     // If the data on any link wasn't readable, set this flag so
     // other tasks can know to discard this event, if wanted
     // TODO: set this flag on a per-link or per-chip basis?
-    if (ctx.state == LinkContext::State::Error) {
+    if (ctx->state == LinkContext::State::Error) {
       mIsDataValid = false;
     }
 
     // If a link context is still in the initial state, it means
     // that the entirety of this payload was empty
     // TODO: set this flag on a per-link or per-chip basis?
-    if (not (ctx.state == LinkContext::State::WaitingForFrame)) {
+    if (not (ctx->state == LinkContext::State::WaitingForFrame)) {
       mHasData = true;
     }
   }

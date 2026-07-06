@@ -46,12 +46,12 @@ struct LinkContext {
 
 class HCalDecoder {
  public:
-  HCalDecoder() = default;
-  ~HCalDecoder() = default;
+  HCalDecoder();
+  ~HCalDecoder();
 
   void reset();
   void decodeBuffer(gsl::span<const char> buffer);
-  void processLine(HCalGBTLine line, LinkContext& ctx);
+  void processLine(HCalGBTLine line, LinkContext* ctx);
 
   bool isTriggerLine(HCalGBTLine line);
   bool isNullLine(HCalGBTLine line);
@@ -66,9 +66,9 @@ class HCalDecoder {
   // Per-event access
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getEventData(int eventIndex) { return mEvents.at(eventIndex); }
   int getNumEvents() const { return static_cast<int>(mEvents.size()); }
-  int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
-  int getL1ADistance(int link_id) { return mLinkContexts[link_id].distL1A; }
-  int getNumL1ACmds(int link_id) { return mLinkContexts[link_id].numL1A; }
+  int getNumSamplesRead(int link_id) { return mLinkContexts[link_id]->samples; }
+  int getL1ADistance(int link_id) { return mLinkContexts[link_id]->distL1A; }
+  int getNumL1ACmds(int link_id) { return mLinkContexts[link_id]->numL1A; }
 
  private:
   bool mIsDataValid;
@@ -76,7 +76,7 @@ class HCalDecoder {
 
   // Per-HBF storage
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinks = {};
-  LinkContext mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
+  LinkContext* mLinkContexts[constants::HCAL_NUM_GBT_LINKS];
 
   // Per-event storage (trigger line separates events)
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> mLinksPerEv = {};
