@@ -102,24 +102,28 @@ class HCALEvent
   // Header
   uint32_t mHeader[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
 
+  // tc tp
+  uint8_t tc[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
+  uint8_t tp[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
+
   // Data channels
-  uint32_t mADC[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
-  uint32_t mTOA[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
-  uint32_t mTOT[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
+  uint16_t mADC[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
+  uint16_t mTOA[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
+  uint16_t mTOT[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2][constants::HCAL_NUM_CHANNELS_PER_ROC_HALF];
 
   // Common mode channels
-  uint32_t mCMN_ADC [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
-  uint32_t mCMN_TOA [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
-  uint32_t mCMN_TOT [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCMN_ADC [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCMN_TOA [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCMN_TOT [constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
 
   // Calibration channels
-  uint32_t mCalib_ADC[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
-  uint32_t mCalib_TOA[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
-  uint32_t mCalib_TOT[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCalib_ADC[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCalib_TOA[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
+  uint16_t mCalib_TOT[constants::HCAL_NUM_SAMPLES_PER_EVENT][constants::HCAL_NUM_GBT_LINKS][constants::HCAL_NUM_ROCS_PER_LINK][2];
 
-  gsl::span<const uint32_t> getADCs(int sample, int link, int roc, int half) const;
-  gsl::span<const uint32_t> getTOAs(int sample, int link, int roc, int half) const;
-  gsl::span<const uint32_t> getTOTs(int sample, int link, int roc, int half) const;
+  gsl::span<const uint16_t> getADCs(int sample, int link, int roc, int half) const;
+  gsl::span<const uint16_t> getTOAs(int sample, int link, int roc, int half) const;
+  gsl::span<const uint16_t> getTOTs(int sample, int link, int roc, int half) const;
 
   void reset();
 

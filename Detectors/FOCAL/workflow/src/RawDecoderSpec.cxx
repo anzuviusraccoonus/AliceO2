@@ -21,6 +21,8 @@
 #include "FOCALWorkflow/RawDecoderSpec.h"
 #include "ITSMFTReconstruction/GBTWord.h"
 
+#include <boost/crc.hpp>
+
 #include <iostream>
 #include <sstream>
 #include <set>
@@ -361,22 +363,30 @@ void RawDecoderSpec::decodePadEvent(const gsl::span<const char> padWords, o2::In
 int RawDecoderSpec::decodeHcalData(const gsl::span<const char> hcalpayload, o2::InteractionRecord& hbIR)
 {
   LOG(debug) << "Decoding hcal data for Orbit " << hbIR.orbit << ", BC " << hbIR.bc;
-
+  LOGF(info, "Decoding hcal data for Orbit %d, BC %d", hbIR.orbit, hbIR.bc);
+  
   mHcalDecoder.reset();
   mHcalDecoder.decodeBuffer(hcalpayload);
 
   if (!mHcalDecoder.hasEventData()) { return 0; }
 
   const int nEvents = mHcalDecoder.getNumEvents();
-  LOGF(debug, "Number of HCAL events: %d", nEvents);
+  LOGF(info, "Number of HCAL events: %d", nEvents);
 
   auto& hbfData = mHBFs.try_emplace(hbIR).first->second;
+
+  // auto foundHBF = mHBFs.find(hbIR);
+  // if (foundHBF == mHBFs.end()) {
+  //   auto res = mHBFs.insert({hbIR, HBFData{}});
+  //   foundHBF = res.first;
+  // }
 
   for (int ievt = 0; ievt < nEvents; ++ievt) {
     auto event = decodeHcalEvent(mHcalDecoder.getEventData(ievt));
     event.mOrbit = hbIR.orbit;
     event.mBC = hbIR.bc;
     hbfData.mHCALEvents.push_back(event);
+    //foundHBF->second.mHCALEvents.push_back(event);
   }
 
   return nEvents;
@@ -384,6 +394,7 @@ int RawDecoderSpec::decodeHcalData(const gsl::span<const char> hcalpayload, o2::
 
 o2::focal::HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT>& links)
 {
+  LOGF(info, "Decoding HCAL events");
   o2::focal::HCALEvent event;
 
   for (int sample = 0; sample < constants::HCAL_NUM_SAMPLES_PER_EVENT; ++sample) {
@@ -394,23 +405,25 @@ o2::focal::HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array
         o2::focal::HCalROC currentROC = currentLink.getROC(roc_id);
 
         for (int half = 0; half < 2; ++half) {
-          o2::focal::HCalROCDataLink currentHalf = currentROC.getChipHalf(half);
+          if(checkDAQHHeader(currentROC.getChipHalf(half)) && checkDAQHTrailer(currentROC.getChipHalf(half)) && checkHammingBits(currentROC.getChipHalf(half)) && checkCRC(currentROC.getChipHalf(half))) {
+            o2::focal::HCalROCDataLink currentHalf = currentROC.getChipHalf(half);
 
-          event.mHeader[sample][link_id][roc_id][half] = currentHalf.getHeader().data;
+            event.mHeader[sample][link_id][roc_id][half] = currentHalf.getHeader().data;
 
-          event.mCMN_ADC [sample][link_id][roc_id][half] = currentHalf.getCommonMode().adc;
-          event.mCMN_TOA [sample][link_id][roc_id][half] = currentHalf.getCommonMode().toa;
-          event.mCMN_TOT [sample][link_id][roc_id][half] = currentHalf.getCommonMode().tot;
+            event.mCMN_ADC [sample][link_id][roc_id][half] = currentHalf.getCommonMode().adc;
+            event.mCMN_TOA [sample][link_id][roc_id][half] = currentHalf.getCommonMode().toa;
+            event.mCMN_TOT [sample][link_id][roc_id][half] = currentHalf.getCommonMode().tot;
 
-          event.mCalib_ADC[sample][link_id][roc_id][half] = currentHalf.getCalibration().adc;
-          event.mCalib_TOA[sample][link_id][roc_id][half] = currentHalf.getCalibration().toa;
-          event.mCalib_TOT[sample][link_id][roc_id][half] = currentHalf.getCalibration().tot;
+            event.mCalib_ADC[sample][link_id][roc_id][half] = currentHalf.getCalibration().adc;
+            event.mCalib_TOA[sample][link_id][roc_id][half] = currentHalf.getCalibration().toa;
+            event.mCalib_TOT[sample][link_id][roc_id][half] = currentHalf.getCalibration().tot;
 
-          for (int chn = 0; chn < constants::HCAL_NUM_CHANNELS_PER_ROC_HALF; ++chn) {
-            o2::focal::HCalChannel currentChannel = currentHalf.getChannel(chn);
-            event.mADC[sample][link_id][roc_id][half][chn] = currentChannel.adc;
-            event.mTOA[sample][link_id][roc_id][half][chn] = currentChannel.toa;
-            event.mTOT[sample][link_id][roc_id][half][chn] = currentChannel.tot;
+            for (int chn = 0; chn < constants::HCAL_NUM_CHANNELS_PER_ROC_HALF; ++chn) {
+              o2::focal::HCalChannel currentChannel = currentHalf.getChannel(chn);
+              event.mADC[sample][link_id][roc_id][half][chn] = currentChannel.adc;
+              event.mTOA[sample][link_id][roc_id][half][chn] = currentChannel.toa;
+              event.mTOT[sample][link_id][roc_id][half][chn] = currentChannel.tot;
+            }
           }
         }
       }
@@ -418,6 +431,37 @@ o2::focal::HCALEvent RawDecoderSpec::decodeHcalEvent(const std::array<std::array
   }
 
   return event;
+}
+
+bool RawDecoderSpec::checkDAQHHeader(o2::focal::HCalROCDataLink half) {
+  return (half.getHeader().hd == 0b1111);
+}
+
+bool RawDecoderSpec::checkDAQHTrailer(o2::focal::HCalROCDataLink half) {
+  return (half.getHeader().tr == 0b0101);
+}
+
+bool RawDecoderSpec::checkHammingBits(o2::focal::HCalROCDataLink half) {
+  return (half.getHeader().hm == 0);
+}
+
+bool RawDecoderSpec::checkCRC(o2::focal::HCalROCDataLink half) {
+  std::array<unsigned int, o2::focal::constants::HCAL_NUM_GBT_LINES_PER_LINK> words = half.getWords();
+  unsigned int crcWord = words[o2::focal::constants::HCAL_NUM_GBT_LINES_PER_LINK - 1];
+
+  boost::crc_basic<32> crc_32(0x04C11DB7, 0x00000000, 0x00000000, false, false);
+  for (int i = 0; i < o2::focal::constants::HCAL_NUM_GBT_LINES_PER_LINK - 1; ++i) {
+    unsigned char bytes[4] = {
+      static_cast<unsigned char>(words[i] >> 24),
+      static_cast<unsigned char>(words[i] >> 16),
+      static_cast<unsigned char>(words[i] >> 8 ),
+      static_cast<unsigned char>(words[i]      ),
+    };
+
+    crc_32.process_bytes(bytes, 4);
+  }
+  
+  return (crc_32.checksum() == crcWord);
 }
 
 int RawDecoderSpec::decodePixelData(const gsl::span<const char> pixelWords, o2::InteractionRecord& hbIR, int feeID)

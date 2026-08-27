@@ -35,29 +35,19 @@ struct LinkContext {
     Error
   };
 
-  State state = State::WaitingForFrame;
-  int samples = 0;
-  int lines   = 0;
-  int id      = -1;
+  State state   = State::WaitingForFrame;
+  bool  gotL1A  = false;
+  int   distL1A = 0;
+  int   numL1A  = 0;
+  int   samples = 0;
+  int   lines   = 0;
+  int   id      = -1;
 };
 
 class HCalDecoder {
  public:
   HCalDecoder() = default;
   ~HCalDecoder() = default;
-
-
-  // L1 trigger distance checks
-  bool mL1FilterMode = false;
-  int mIdleBeforeL1Count_Link0;
-  int mIdleBeforeL1_Link0;
-  bool mFoundL1_Link0;
-  int mIdleBeforeL1Count_Link1;
-  int mIdleBeforeL1_Link1;
-  bool mFoundL1_Link1;
-  //hardcode the changes here once the distances have been determined and change the filter mode to true
-  int mMaxL1Dist_Link0 = 0;
-  int mMaxL1Dist_Link1 = 0;
 
   void reset();
   void decodeBuffer(gsl::span<const char> buffer);
@@ -66,7 +56,6 @@ class HCalDecoder {
   bool isTriggerLine(HCalGBTLine line);
   bool isNullLine(HCalGBTLine line);
   bool isIdleLine(HCalGBTLine line);
-  bool isL1Line(HCalGBTLine line);
   bool isDAQHLine(HCalGBTLine line);
   
   bool hasEventData() { return mHasData; }
@@ -78,6 +67,8 @@ class HCalDecoder {
   std::array<std::array<HCalGBTLink, constants::HCAL_NUM_GBT_LINKS>, constants::HCAL_NUM_SAMPLES_PER_EVENT> getEventData(int eventIndex) { return mEvents.at(eventIndex); }
   int getNumEvents() const { return static_cast<int>(mEvents.size()); }
   int getNumSamplesRead(int link_id) { return mLinkContexts[link_id].samples; }
+  int getL1ADistance(int link_id) { return mLinkContexts[link_id].distL1A; }
+  int getNumL1ACmds(int link_id) { return mLinkContexts[link_id].numL1A; }
 
  private:
   bool mIsDataValid;

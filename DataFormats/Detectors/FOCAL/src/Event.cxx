@@ -131,21 +131,21 @@ void Event::setHCAL(const HCALEvent& event)
   mHCALData = event;
 }
 
-gsl::span<const uint32_t> HCALEvent::getADCs(int sample, int link, int roc, int half) const
+gsl::span<const uint16_t> HCALEvent::getADCs(int sample, int link, int roc, int half) const
 {
-  return gsl::span<const uint32_t>(mADC[sample][link][roc][half],
+  return gsl::span<const uint16_t>(mADC[sample][link][roc][half],
                                    constants::HCAL_NUM_CHANNELS_PER_ROC_HALF);
 }
 
-gsl::span<const uint32_t> HCALEvent::getTOAs(int sample, int link, int roc, int half) const
+gsl::span<const uint16_t> HCALEvent::getTOAs(int sample, int link, int roc, int half) const
 {
-  return gsl::span<const uint32_t>(mTOA[sample][link][roc][half],
+  return gsl::span<const uint16_t>(mTOA[sample][link][roc][half],
                                    constants::HCAL_NUM_CHANNELS_PER_ROC_HALF);
 }
 
-gsl::span<const uint32_t> HCALEvent::getTOTs(int sample, int link, int roc, int half) const
+gsl::span<const uint16_t> HCALEvent::getTOTs(int sample, int link, int roc, int half) const
 {
-  return gsl::span<const uint32_t>(mTOT[sample][link][roc][half],
+  return gsl::span<const uint16_t>(mTOT[sample][link][roc][half],
                                    constants::HCAL_NUM_CHANNELS_PER_ROC_HALF);
 }
 
@@ -155,6 +155,9 @@ void HCALEvent::reset()
   mBC    = 0;
 
   memset(mHeader, 0, sizeof(mHeader));
+
+  memset(tc,       0, sizeof(tc));
+  memset(tp,       0, sizeof(tp));
 
   memset(mADC,       0, sizeof(mADC));
   memset(mTOA,       0, sizeof(mTOA));

@@ -25,6 +25,7 @@
 #include "DataFormatsFOCAL/TriggerRecord.h"
 #include "FOCALReconstruction/PadDecoder.h"
 #include "FOCALReconstruction/HCalDecoder.h"
+#include "FOCALReconstruction/HCalROCDataLink.h"
 #include "FOCALReconstruction/PixelDecoder.h"
 #include "FOCALReconstruction/PixelMapper.h"
 
@@ -121,6 +122,12 @@ class RawDecoderSpec : public framework::Task
   std::map<int, int> mNumHBFperTFPads;
   std::map<int, int> mNumHBFperTFPixels;
   std::map<int, int> mNumHBFperTFHcal;
+
+
+  bool checkDAQHHeader(o2::focal::HCalROCDataLink half);
+  bool checkDAQHTrailer(o2::focal::HCalROCDataLink half);
+  bool checkHammingBits(o2::focal::HCalROCDataLink half);
+  bool checkCRC(o2::focal::HCalROCDataLink half);
 };
 
 framework::DataProcessorSpec getRawDecoderSpec(bool askDISTSTF, uint32_t outputSubspec, bool usePadData, bool usePixelData, bool useHcalData, bool debugMode);
