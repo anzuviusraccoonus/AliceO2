@@ -8,3 +8,14 @@
 # In applying this license CERN does not waive the privileges and immunities
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
+
+o2_add_library(
+  FOCALReconstruction SOURCES
+    src/Readout.cxx
+)
+
+o2_target_root_dictionary(
+  FOCALReconstruction HEADERS
+  include/FOCALReconstruction/DataStructs.h
+  include/FOCALReconstruction/Readout.h
+)
