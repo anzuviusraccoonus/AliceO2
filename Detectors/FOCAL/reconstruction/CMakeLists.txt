@@ -11,6 +11,7 @@
 
 o2_add_library(
   FOCALReconstruction SOURCES
+    src/DataStructs.cxx
     src/Readout.cxx
 )
 

@@ -74,6 +74,26 @@ namespace o2::focal
     uint32_t  ob_cntr() const { return  words[1];                 }
   };
 
+  /// \enum GBTLineType
+  /// \brief Types of interpretations of packets
+  /// "Idle" are those packets resulting from an IDLE command,
+  /// which is also expected to be found at least 1x at end-of-frame.
+  /// "DAQHeader" are the first packets of a DAQ frame.
+  /// "Padding" are packets that are all zeroes and can be safely ignored.
+  /// "Trigger" packets may be put in as the first packet of a new event,
+  /// though they don't actually originate from a readout LpGBT link.
+  enum class GBTLineType {
+    Generic,
+    Trigger,
+    Idle,
+    DAQHeader,
+    Padding
+  };
+
+  /// \brief Determine the type of a packet or "line" of payload data
+  /// \return GBTLineType with a non-Generic value if line matches criterion
+  GBTLineType classify(const GBTLine& line);
+
 } // namespace o2::focal
 
 #endif
