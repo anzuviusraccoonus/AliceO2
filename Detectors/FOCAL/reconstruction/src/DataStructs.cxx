@@ -37,7 +37,7 @@ bool isDAQHLine(const GBTLine& line) {
 
   auto isDAQHWord = [&](uint32_t word) {
     for (const uint32_t& p : patterns) {
-      if (word == p) {
+      if ((word & p) == p) {
         return true;
       }
     }
