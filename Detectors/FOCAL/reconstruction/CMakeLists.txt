@@ -13,10 +13,12 @@ o2_add_library(
   FOCALReconstruction SOURCES
     src/DataStructs.cxx
     src/Readout.cxx
+    src/Decoder.cxx
 )
 
 o2_target_root_dictionary(
   FOCALReconstruction HEADERS
   include/FOCALReconstruction/DataStructs.h
   include/FOCALReconstruction/Readout.h
+  include/FOCALReconstruction/Decoder.h
 )
