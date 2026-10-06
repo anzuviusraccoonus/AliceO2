@@ -1,6 +1,6 @@
 #include <ranges>
 
-#include "FOCALReconstruction/Readout.h"
+#include "DataFormatsFOCAL/Readout.h"
 
 using namespace o2::focal;
 using namespace o2::focal::readout;

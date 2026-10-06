@@ -1,4 +1,4 @@
-#include "FOCALReconstruction/DataStructs.h"
+#include "DataFormatsFOCAL/DataStructs.h"
 
 namespace o2::focal
 {

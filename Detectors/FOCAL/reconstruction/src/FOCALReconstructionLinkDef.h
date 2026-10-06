@@ -15,10 +15,6 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
-#pragma link C++ class o2::focal::readout::GBTLink + ;
-#pragma link C++ class o2::focal::readout::ReadoutChip + ;
-#pragma link C++ class o2::focal::readout::DataLink + ;
-
 #pragma link C++ class o2::focal::Decoder + ;
 
 #endif

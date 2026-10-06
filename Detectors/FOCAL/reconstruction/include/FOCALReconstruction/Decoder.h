@@ -4,8 +4,8 @@
 #include <span>
 #include <vector>
 
-#include "FOCALReconstruction/DataStructs.h"
-#include "FOCALReconstruction/Readout.h"
+#include "DataFormatsFOCAL/DataStructs.h"
+#include "DataFormatsFOCAL/Readout.h"
 
 namespace o2::focal 
 {

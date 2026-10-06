@@ -9,19 +9,27 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-o2_add_library(DataFormatsFOCAL
-    SOURCES src/Event.cxx
+o2_add_library(
+  DataFormatsFOCAL SOURCES 
+    src/Event.cxx
     src/ErrorHandling.cxx
     src/PixelHit.cxx
     src/PixelChip.cxx
     src/PixelChipRecord.cxx
     src/TriggerRecord.cxx
+    src/DataStructs.cxx
+    src/Readout.cxx
     PUBLIC_LINK_LIBRARIES O2::CommonDataFormat
-    O2::Headers)
+    O2::Headers
+  )
 
-o2_target_root_dictionary(DataFormatsFOCAL
-    HEADERS include/DataFormatsFOCAL/Event.h
+o2_target_root_dictionary(
+  DataFormatsFOCAL HEADERS 
+    include/DataFormatsFOCAL/Event.h
     include/DataFormatsFOCAL/PixelHit.h
     include/DataFormatsFOCAL/PixelChip.h
     include/DataFormatsFOCAL/PixelChipRecord.h
-    include/DataFormatsFOCAL/TriggerRecord.h)
+    include/DataFormatsFOCAL/TriggerRecord.h
+    include/DataFormatsFOCAL/DataStructs.h
+    include/DataFormatsFOCAL/Readout.h
+  )

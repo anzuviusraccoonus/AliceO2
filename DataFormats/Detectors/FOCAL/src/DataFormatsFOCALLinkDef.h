@@ -32,4 +32,9 @@
 #pragma link C++ class std::vector < o2::focal::PixelChip> + ;
 #pragma link C++ class std::vector < o2::focal::PixelChipRecord> + ;
 #pragma link C++ class std::vector < o2::focal::TriggerRecord> + ;
+
+#pragma link C++ class o2::focal::readout::GBTLink + ;
+#pragma link C++ class o2::focal::readout::ReadoutChip + ;
+#pragma link C++ class o2::focal::readout::DataLink + ;
+
 #endif
