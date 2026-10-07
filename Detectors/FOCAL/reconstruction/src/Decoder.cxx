@@ -1,11 +1,13 @@
+#include <iostream>
+#include <iomanip>
+
 #include "FOCALReconstruction/Decoder.h"
 
 using namespace o2::focal;
 using namespace o2::focal::readout;
 
-Decoder::Decoder(int numLinks) {
+Decoder::Decoder(int numLinks) : mNumGBTLinks(numLinks) {
   for (int i = 0; i < numLinks; ++i) {
-    mGBTLinks.push_back(GBTLink());
     mLinkContexts.push_back(GBTLinkContext());
   }
 
@@ -13,15 +15,19 @@ Decoder::Decoder(int numLinks) {
 }
 
 void Decoder::reset() {
-  for (GBTLink& link : mGBTLinks) {
-    link.reset();
-  }
+  mEvents.clear();
+  mCurrentEvent = nullptr;
+}
 
+void Decoder::prepareNewEvent() {
   for (GBTLinkContext& ctx : mLinkContexts) {
     ctx.state = GBTLinkContext::State::WaitingForFrame;
     ctx.lines = 0;
     ctx.samples = 0;
   }
+
+  mEvents.emplace_back(mNumGBTLinks);
+  mCurrentEvent = &(mEvents.back());
 }
 
 void Decoder::decodeBuffer(std::span<const char> buffer) {
@@ -39,15 +45,14 @@ void Decoder::decodeBuffer(std::span<const char> buffer) {
 }
 
 void Decoder::processLine(const GBTLine& line) {
-  GBTLineType lineType = classify(line);
-  
-  // Skip the trigger line (no processing needed for now) and padded zeroes
-  if (lineType == GBTLineType::Trigger || lineType == GBTLineType::Padding) {
+  GBTLineType lineType = classify(line); 
+  if (lineType == GBTLineType::Padding) { return; }
+  if (lineType == GBTLineType::Trigger) {
+    prepareNewEvent();
     return;
   }
 
   const int linkID = line.link_id();
-  GBTLink& link = mGBTLinks[linkID];
   GBTLinkContext& ctx = mLinkContexts[linkID];
   switch (ctx.state) {
     case GBTLinkContext::State::WaitingForFrame:
@@ -59,6 +64,12 @@ void Decoder::processLine(const GBTLine& line) {
 
       // first line of daq frame
       else if (lineType == GBTLineType::DAQHeader) {
+
+        // if this is a new sample, add it to the current event data
+        if (mCurrentEvent->samples.size() == ctx.samples) {
+          mCurrentEvent->addSample();
+        }
+
         ctx.state = GBTLinkContext::State::ReadingFrame;
         [[fallthrough]];
       }
@@ -80,16 +91,17 @@ void Decoder::processLine(const GBTLine& line) {
 
       // Anything else is considered data to be parsed
       else {
-        link.fillData(line, ctx.lines++);
+        mCurrentEvent->samples[ctx.samples].gbtLinks[linkID].fillData(line, ctx.lines++);
         break;
       }
 
     case GBTLinkContext::State::EndOfFrame:
 
-      // TODO: add functionality to handle more than 1 sample
-      // Could also calculate and check CRC checksum here.
-      ctx.state = GBTLinkContext::State::Finished;
-      [[fallthrough]];
+      // TODO: Could also calculate and check CRC checksum here.
+      ++ctx.samples;
+      ctx.lines = 0;
+      ctx.state = GBTLinkContext::State::WaitingForFrame;
+      break;
 
     case GBTLinkContext::State::Finished:
       break;
@@ -99,6 +111,14 @@ void Decoder::processLine(const GBTLine& line) {
   }
 }
 
-const std::vector<GBTLink>& Decoder::getGBTLinks() const {
-  return mGBTLinks;
+const EventData& Decoder::getEvent() const {
+  return mEvents.back();
+}
+
+const EventData& Decoder::getEvent(int index) const {
+  return mEvents[index];
+}
+
+const std::vector<EventData>& Decoder::getEvents() const {
+  return mEvents;
 }

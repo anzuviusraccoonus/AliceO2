@@ -6,6 +6,7 @@
 
 #include "DataFormatsFOCAL/DataStructs.h"
 #include "DataFormatsFOCAL/Readout.h"
+#include "DataFormatsFOCAL/EventData.h"
 
 namespace o2::focal 
 {
@@ -24,7 +25,7 @@ struct GBTLinkContext {
   State state   = State::WaitingForFrame;
   int   lines   = 0;
   int   samples = 0;
-  int   id      = -1;
+  int   id      = -1; // currently unusued
 };
 
 /// \class Decoder
@@ -42,20 +43,26 @@ class Decoder {
     /// \brief Decodes all data the current buffer
     /// Casts the buffer to a vector of GBTLines (32 byte packets)
     /// and iterates over them, reading the event data present.
-    /// Currently, this function expects the buffer to be no more
-    /// than ONE event/trigger with ONE sample.
-    /// On return, event data is available through getGBTLinks().
     void decodeBuffer(std::span<const char> buffer);
 
-    /// \brief Get the decoded data for the last decoded event and sample
-    /// \return Reference to std::array of GBTLinks with event data
-    const std::vector<readout::GBTLink>& getGBTLinks() const;
+    /// \brief Get the decoded data for the last decoded event
+    const EventData& getEvent() const;
+
+    /// \brief Get the decoded data for a specific event
+    const EventData& getEvent(int index) const;
+
+    /// \brief Get the decoded data for all events
+    const std::vector<EventData>& getEvents() const;
   
   private:
     void processLine(const GBTLine& line);
+    void prepareNewEvent();
 
-    std::vector<readout::GBTLink> mGBTLinks     = {};
-    std::vector<GBTLinkContext>   mLinkContexts = {};
+    std::vector<GBTLinkContext> mLinkContexts = {};
+
+    uint8_t mNumGBTLinks;
+    EventData* mCurrentEvent;
+    std::vector<EventData> mEvents;
 };
 
 } // namespace o2::focal
