@@ -19,6 +19,7 @@ o2_add_library(
     src/TriggerRecord.cxx
     src/DataStructs.cxx
     src/Readout.cxx
+    src/EventData.cxx
     PUBLIC_LINK_LIBRARIES O2::CommonDataFormat
     O2::Headers
   )
@@ -32,4 +33,5 @@ o2_target_root_dictionary(
     include/DataFormatsFOCAL/TriggerRecord.h
     include/DataFormatsFOCAL/DataStructs.h
     include/DataFormatsFOCAL/Readout.h
+    include/DataFormatsFOCAL/EventData.h
   )

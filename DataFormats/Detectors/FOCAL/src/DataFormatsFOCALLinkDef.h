@@ -37,4 +37,9 @@
 #pragma link C++ class o2::focal::readout::ReadoutChip + ;
 #pragma link C++ class o2::focal::readout::DataLink + ;
 
+#pragma link C++ struct o2::focal::Word + ;
+#pragma link C++ struct o2::focal::DAQHeaderWord + ;
+#pragma link C++ struct o2::focal::DAQDataWord + ;
+#pragma link C++ struct o2::focal::GBTLine + ;
+
 #endif
