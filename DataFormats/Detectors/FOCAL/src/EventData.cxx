@@ -3,6 +3,7 @@
 using namespace o2::focal;
 using namespace o2::focal::readout;
 
+SampleData::SampleData() {}
 SampleData::SampleData(int numLinks) {
   for (int i = 0; i < numLinks; ++i) {
     gbtLinks.push_back(GBTLink());

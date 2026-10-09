@@ -42,4 +42,9 @@
 #pragma link C++ struct o2::focal::DAQDataWord + ;
 #pragma link C++ struct o2::focal::GBTLine + ;
 
+#pragma link C++ class o2::focal::SampleData + ;
+#pragma link C++ class std::vector < o2::focal::SampleData> + ;
+#pragma link C++ class o2::focal::EventData + ;
+#pragma link C++ class std::vector < o2::focal::EventData> + ;
+
 #endif

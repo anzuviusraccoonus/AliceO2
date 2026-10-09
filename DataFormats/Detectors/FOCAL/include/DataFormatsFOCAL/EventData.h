@@ -8,12 +8,14 @@
 namespace o2::focal
 {
 
-/// \struct SampleData
+/// \class SampleData
 /// \brief One sample (complete readout) of an event and it's associated link data
-struct SampleData {
-  SampleData(int numLinks);
+class SampleData {
+  public:
+    SampleData();
+    SampleData(int numLinks);
 
-  std::vector<readout::GBTLink> gbtLinks;
+    std::vector<readout::GBTLink> gbtLinks;
 };
 
 /// \class EventData
