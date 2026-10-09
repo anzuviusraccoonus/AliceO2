@@ -78,6 +78,8 @@ namespace o2::focal::readout
       /// \return std::span of DataLinks
       std::span<DataLink> getDataLinks();
 
+      DataLink& getDataLink(int index) { return mDataLinks[index]; }
+
     private:
       std::array<DataLink, NUM_DATALINKS> mDataLinks;
   };
@@ -104,6 +106,8 @@ namespace o2::focal::readout
       /// \brief Get a view of all data links belonging to this LpGBT link
       /// \return std::view of DataLinks
       auto getDataLinks();
+
+      ReadoutChip& getROC(int index) { return mReadoutChips[index]; }
 
     private:
       std::array<ReadoutChip, NUM_READOUTCHIPS> mReadoutChips;
