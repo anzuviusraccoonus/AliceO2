@@ -2,7 +2,7 @@
 #define ALICEO2_FOCAL_EVENTDATA_H
 
 #include <vector>
-
+#include <Rtypes.h>
 #include "DataFormatsFOCAL/Readout.h"
 
 namespace o2::focal
@@ -16,6 +16,8 @@ class SampleData {
     SampleData(int numLinks);
 
     std::vector<readout::GBTLink> gbtLinks;
+
+  ClassDefNV(SampleData, 1);
 };
 
 /// \class EventData
@@ -32,6 +34,8 @@ class EventData {
 
   private:
     int mNumGBTLinks;
+
+  ClassDefNV(EventData, 1);
 };
 
 } // namespace o2::focal

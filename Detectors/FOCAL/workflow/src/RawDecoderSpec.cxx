@@ -52,6 +52,8 @@ void RawDecoderSpec::run(ProcessingContext& ctx) {
       std::cout << "Decoded events: " << mDecoder.getEvents().size() << std::endl;
     }
   }
+
+  sendOutput(ctx);
 }
 
 void RawDecoderSpec::endOfStream(EndOfStreamContext& ctx) {
@@ -72,6 +74,9 @@ DataProcessorSpec o2::focal::getRawDecoderSpec(bool debug) {
   inputs.emplace_back("stf", 
                       ConcreteDataTypeMatcher{origin, o2::header::gDataDescriptionRawData}, 
                       Lifetime::Timeframe);
+
+  outputs.emplace_back(origin, "EVENTDATA", 0,
+                       Lifetime::Timeframe);
 
   return DataProcessorSpec{"FOCALRawDecoderSpec", inputs, outputs,
                            adaptFromTask<RawDecoderSpec>(debug),
