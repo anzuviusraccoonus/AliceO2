@@ -33,34 +33,16 @@ namespace o2::focal
   };
 
   /// \struct DAQDataWord
-  /// \brief Helper class for generic DAQ words
-  /// The various getter functions assume that the contents 
-  /// of the data word corresponds to "case 4" i.e.:
-  /// 
-  /// field: Tc  Tp  ADC  TOT  TOA
-  ///  bits:  1   1   10   10   10
-  ///
-  /// which is the case if the H2GCROCs are run in 
-  /// characterization mode. If not, it depends on the
-  /// value of Tc:
-  ///
-  /// Case Tc == 0:
-  /// 1 | Tp | ADC-1 | ADC | TOA
-  ///
-  /// Case Tc == 1:
-  /// 0 | Tp | ADC-1 | TOT | TOA
-  ///
-  /// where ADC-1 is the ADC from the previous bunch crossing.
-  /// See H2GCROC datasheet for more information.
+  /// \brief Helper class for generic DAQ data words
   struct DAQDataWord : public Word {
     DAQDataWord() = default;
     explicit constexpr DAQDataWord(uint32_t w) : Word{w} {}
 
-    bool      tc()  const { return (data >> 31) & 0x1;    }
-    bool      tp()  const { return (data >> 30) & 0x1;    }
-    uint16_t  adc() const { return (data >> 20) & 0x3FF;  }
-    uint16_t  tot() const { return (data >> 10) & 0x3FF;  }
-    uint16_t  toa() const { return  data        & 0x3FF;  }
+    bool      bit31()  const { return (data >> 31) & 0x1;    }
+    bool      bit30()  const { return (data >> 30) & 0x1;    }
+    uint16_t  field1() const { return (data >> 20) & 0x3FF;  }
+    uint16_t  field2() const { return (data >> 10) & 0x3FF;  }
+    uint16_t  field3() const { return  data        & 0x3FF;  }
   };
 
   /// \struct GBTLine
@@ -88,6 +70,13 @@ namespace o2::focal
     Idle,
     DAQHeader,
     Padding
+  };
+
+  /// \enum H2GCROCMode
+  /// \brief Operational mode of the H2GCROC chip
+  enum class H2GCROCMode {
+    Normal,
+    Characterization
   };
 
   /// \brief Determine the type of a packet or "line" of payload data

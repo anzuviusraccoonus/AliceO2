@@ -1,5 +1,6 @@
 #include <ranges>
 
+
 #include "DataFormatsFOCAL/Readout.h"
 
 using namespace o2::focal;
@@ -45,6 +46,9 @@ DAQDataWord DataLink::getChannel(size_t index) const {
   return mChannels[index];
 }
 
+ChannelData DataLink::getDecodedChannel(size_t index, H2GCROCMode mode) const {
+  return ChannelData{mChannels[index], mode};
+}
 
 void ReadoutChip::reset() {
   mDataLinks = {};

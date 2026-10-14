@@ -5,7 +5,9 @@
 #include <cstddef>
 #include <span>
 
+
 #include "DataFormatsFOCAL/DataStructs.h"
+#include "DataFormatsFOCAL/ChannelData.h"
 
 namespace o2::focal::readout
 {
@@ -28,6 +30,18 @@ namespace o2::focal::readout
       DAQDataWord getCalibration() const;
       DAQDataWord getCRC() const;
       DAQDataWord getChannel(size_t index) const;
+
+      /// \brief Constructs and returns a decoded channel object according to the operating mode
+      /// \param index Index of the channel to decode
+      /// \param mode Operating mode of the H2GCROC (::Normal or ::Characterization)
+      /// \return ChannelData object
+      /// This is the primary way of getting the decoded data from a channel.
+      /// The returned ChannelData object has accessors to ADC, TOT, TOA and other values
+      /// depending on the type of data that is stored, which can be tested with 
+      /// e.g. hasADC() and hasTOT(). The operating mode of the H2GCROC must be passed
+      /// to this function as the interpretation of the raw data in the channel
+      /// is dependent (partially) on this.
+      ChannelData getDecodedChannel(size_t index, o2::focal::H2GCROCMode mode) const;
 
     private:
       DAQHeaderWord mHeader;
@@ -78,7 +92,9 @@ namespace o2::focal::readout
       /// \return std::span of DataLinks
       std::span<DataLink> getDataLinks();
 
-      DataLink& getDataLink(int index) { return mDataLinks[index]; }
+      /// \brief Get a specific data link by it's index
+      /// \return Read-only reference to selected data link on this ROC
+      const DataLink& getDataLink(int index) const { return mDataLinks[index]; }
 
     private:
       std::array<DataLink, NUM_DATALINKS> mDataLinks;
@@ -107,7 +123,10 @@ namespace o2::focal::readout
       /// \return std::view of DataLinks
       auto getDataLinks();
 
-      ReadoutChip& getROC(int index) { return mReadoutChips[index]; }
+      /// \brief Get a specific ROC by it's index
+      /// \param index Index of ROC on this link to get
+      /// \return Read-only reference to selected ROC on this LpGBT link
+      const ReadoutChip& getROC(int index) const { return mReadoutChips[index]; }
 
     private:
       std::array<ReadoutChip, NUM_READOUTCHIPS> mReadoutChips;
