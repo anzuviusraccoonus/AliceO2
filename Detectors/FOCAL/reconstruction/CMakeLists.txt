@@ -12,6 +12,7 @@
 o2_add_library(
   FOCALReconstruction SOURCES
     src/Decoder.cxx
+    src/Mapper.cxx
   PUBLIC_LINK_LIBRARIES
     O2::DataFormatsFOCAL
 )
@@ -19,4 +20,5 @@ o2_add_library(
 o2_target_root_dictionary(
   FOCALReconstruction HEADERS
   include/FOCALReconstruction/Decoder.h
+  include/FOCALReconstruction/Mapper.h
 )
