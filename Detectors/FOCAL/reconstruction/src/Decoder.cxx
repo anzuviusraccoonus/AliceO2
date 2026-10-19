@@ -66,7 +66,7 @@ void Decoder::processLine(const GBTLine& line) {
       else if (lineType == GBTLineType::DAQHeader) {
 
         // if this is a new sample, add it to the current event data
-        if (mCurrentEvent->samples.size() == ctx.samples) {
+        if (mCurrentEvent->getNumberOfSamples() == ctx.samples) {
           mCurrentEvent->addSample();
         }
 
@@ -91,7 +91,7 @@ void Decoder::processLine(const GBTLine& line) {
 
       // Anything else is considered data to be parsed
       else {
-        mCurrentEvent->samples[ctx.samples].gbtLinks[linkID].fillData(line, ctx.lines++);
+        mCurrentEvent->getData(ctx.samples).at(linkID).fillData(line, ctx.lines++);
         break;
       }
 

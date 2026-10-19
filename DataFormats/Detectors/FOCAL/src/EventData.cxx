@@ -3,16 +3,24 @@
 using namespace o2::focal;
 using namespace o2::focal::readout;
 
-SampleData::SampleData() {}
-SampleData::SampleData(int numLinks) {
-  for (int i = 0; i < numLinks; ++i) {
-    gbtLinks.push_back(GBTLink());
-  }
-}
+SampleData::SampleData(int numLinks)
+  : gbtLinks(numLinks) {}
 
-EventData::EventData() : mNumGBTLinks(0) {}
-EventData::EventData(int numLinks) : mNumGBTLinks(numLinks) {}
+EventData::EventData(int numLinks) 
+  : mNumGBTLinks(numLinks) {}
 
 void EventData::addSample() {
-  samples.emplace_back(mNumGBTLinks);
+  mSamples.emplace_back(mNumGBTLinks);
+}
+
+std::vector<readout::GBTLink>& EventData::getData(size_t sampleIndex) {
+  return mSamples.at(sampleIndex).gbtLinks;
+}
+
+const std::vector<readout::GBTLink>& EventData::getData(size_t sampleIndex) const {
+  return mSamples.at(sampleIndex).gbtLinks;
+}
+
+size_t EventData::getNumberOfSamples() const {
+  return mSamples.size();
 }
