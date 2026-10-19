@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <ranges>
 #include <span>
 
 
@@ -42,6 +43,14 @@ namespace o2::focal::readout
       /// to this function as the interpretation of the raw data in the channel
       /// is dependent (partially) on this.
       ChannelData getDecodedChannel(size_t index, o2::focal::H2GCROCMode mode) const;
+
+      /// \brief Construct and return an array containing the stored data on this link
+      /// \return Array of words according to H2GCROC layout specifications
+      /// The layout returned here is hardcoded to follow the layout in the specification.
+      /// If that ever changes, this function will need to be updated accordingly.
+      /// That also means that the current assumption is that NUM_WORDS = 40,
+      /// and NUM_CHANNELS = 36.
+      std::array<uint32_t, NUM_WORDS> getWords() const;
 
     private:
       DAQHeaderWord mHeader;
@@ -121,7 +130,11 @@ namespace o2::focal::readout
 
       /// \brief Get a view of all data links belonging to this LpGBT link
       /// \return std::view of DataLinks
-      auto getDataLinks();
+      auto getDataLinks() {
+        return mReadoutChips |
+               std::views::transform([](ReadoutChip& roc) { return roc.getDataLinks(); }) |
+               std::views::join;
+      }
 
       /// \brief Get a specific ROC by it's index
       /// \param index Index of ROC on this link to get

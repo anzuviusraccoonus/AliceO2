@@ -53,6 +53,8 @@ class Decoder {
 
     /// \brief Get the decoded data for all events
     const std::vector<EventData>& getEvents() const;
+
+    bool checkCRC(readout::DataLink&);
   
   private:
     void processLine(const GBTLine& line);

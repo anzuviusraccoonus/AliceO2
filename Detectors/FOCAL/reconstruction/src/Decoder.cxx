@@ -1,7 +1,9 @@
 #include <iostream>
 #include <iomanip>
 
+#include "Framework/Logger.h"
 #include "FOCALReconstruction/Decoder.h"
+#include "FOCALReconstruction/fast_crc32.h"
 
 using namespace o2::focal;
 using namespace o2::focal::readout;
@@ -42,6 +44,16 @@ void Decoder::decodeBuffer(std::span<const char> buffer) {
   for (const GBTLine& line : lines) {
     processLine(line);
   }
+}
+
+bool Decoder::checkCRC(readout::DataLink& link) {
+  uint32_t result = fast_crc32::calculate(link.getWords().data());
+  if (!(result == link.getCRC())) {
+    LOGF(error, "CRC checksum mismatch! Got: %08X Expected: %08X", link.getCRC().data, result);
+    return false;
+  }
+
+  return true;
 }
 
 void Decoder::processLine(const GBTLine& line) {
@@ -96,13 +108,22 @@ void Decoder::processLine(const GBTLine& line) {
       }
 
     case GBTLinkContext::State::EndOfFrame:
+      {
 
-      // TODO: Could also calculate and check CRC checksum here.
+      // Can check CRC word here. Currently only logs an error if there's a mismatch,
+      // and this doesn't take into account that some data links might contain debug 
+      // data instead of real data, as is the case with HCal test-beam, for example.
+      // (That will cause a lot of error messages - TODO: do something about this)
+      auto datalinks = mCurrentEvent->getData(ctx.samples).at(linkID).getDataLinks();
+      for (readout::DataLink& link : datalinks) {
+        checkCRC(link);
+      }
+
       ++ctx.samples;
       ctx.lines = 0;
       ctx.state = GBTLinkContext::State::WaitingForFrame;
       break;
-
+      }
     case GBTLinkContext::State::Finished:
       break;
 

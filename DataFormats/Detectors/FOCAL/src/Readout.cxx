@@ -1,6 +1,3 @@
-#include <ranges>
-
-
 #include "DataFormatsFOCAL/Readout.h"
 
 using namespace o2::focal;
@@ -50,6 +47,24 @@ ChannelData DataLink::getDecodedChannel(size_t index, H2GCROCMode mode) const {
   return ChannelData{mChannels[index], mode};
 }
 
+std::array<uint32_t, DataLink::NUM_WORDS> DataLink::getWords() const {
+  std::array<uint32_t, DataLink::NUM_WORDS> words{};
+
+  words[0] = mHeader;
+  words[1] = mCommonMode;
+  for (size_t i = 0; i < 18; ++i) {
+    words[2 + i] = mChannels[i];
+  }
+
+  words[20] = mCalibration;
+  for (size_t i = 18; i < 36; ++i) {
+    words[3 + i] = mChannels[i];
+  }
+
+  words[39] = mCRC;
+  return words;
+}
+
 void ReadoutChip::reset() {
   mDataLinks = {};
 }
@@ -81,12 +96,6 @@ std::span<DataLink> ReadoutChip::getDataLinks() {
 
 void GBTLink::reset() {
   mReadoutChips = {};
-}
-
-auto GBTLink::getDataLinks() {
-  return mReadoutChips | 
-         std::views::transform([](ReadoutChip& roc) { return roc.getDataLinks(); }) | 
-         std::views::join;
 }
 
 void GBTLink::fillData(const GBTLine& line, size_t lineNumber) {
