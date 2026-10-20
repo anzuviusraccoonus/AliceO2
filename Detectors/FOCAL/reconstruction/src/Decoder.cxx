@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 
+#include "CommonDataFormat/InteractionRecord.h"
 #include "Framework/Logger.h"
 #include "FOCALReconstruction/Decoder.h"
 #include "FOCALReconstruction/fast_crc32.h"
@@ -21,7 +22,7 @@ void Decoder::reset() {
   mCurrentEvent = nullptr;
 }
 
-void Decoder::prepareNewEvent() {
+void Decoder::prepareNewEvent(const GBTLine& triggerLine) {
   for (GBTLinkContext& ctx : mLinkContexts) {
     ctx.state = GBTLinkContext::State::WaitingForFrame;
     ctx.lines = 0;
@@ -30,6 +31,9 @@ void Decoder::prepareNewEvent() {
 
   mEvents.emplace_back(mNumGBTLinks);
   mCurrentEvent = &(mEvents.back());
+  mCurrentEvent->setInteractionRecord(o2::InteractionRecord(triggerLine.words[1],
+                                                           triggerLine.words[3]));
+  mCurrentEvent->printInteractionRecord();
 }
 
 void Decoder::decodeBuffer(std::span<const char> buffer) {
@@ -46,7 +50,7 @@ void Decoder::decodeBuffer(std::span<const char> buffer) {
   }
 }
 
-bool Decoder::checkCRC(readout::DataLink& link) {
+bool Decoder::checkCRC(const readout::DataLink& link) {
   uint32_t result = fast_crc32::calculate(link.getWords().data());
   if (!(result == link.getCRC())) {
     LOGF(error, "CRC checksum mismatch! Got: %08X Expected: %08X", link.getCRC().data, result);
@@ -60,7 +64,7 @@ void Decoder::processLine(const GBTLine& line) {
   GBTLineType lineType = classify(line); 
   if (lineType == GBTLineType::Padding) { return; }
   if (lineType == GBTLineType::Trigger) {
-    prepareNewEvent();
+    prepareNewEvent(line);
     return;
   }
 
@@ -114,16 +118,26 @@ void Decoder::processLine(const GBTLine& line) {
       // and this doesn't take into account that some data links might contain debug 
       // data instead of real data, as is the case with HCal test-beam, for example.
       // (That will cause a lot of error messages - TODO: do something about this)
-      auto datalinks = mCurrentEvent->getData(ctx.samples).at(linkID).getDataLinks();
-      for (readout::DataLink& link : datalinks) {
-        checkCRC(link);
+      auto& gbt = mCurrentEvent->getData(ctx.samples).at(linkID);
+      for (int j = 0; j < 2; ++j) { // ignore ROC index 2 with HCal TB data
+        auto& roc = gbt.getROC(j);
+        for (int k = 0; k < 2; ++k) {
+          auto& lnk = roc.getDataLink(k);
+          checkCRC(lnk);
+        }
       }
+
+      //auto datalinks = mCurrentEvent->getData(ctx.samples).at(linkID).getDataLinks();
+      //for (readout::DataLink& link : datalinks) {
+      //  checkCRC(link);
+      //}
 
       ++ctx.samples;
       ctx.lines = 0;
       ctx.state = GBTLinkContext::State::WaitingForFrame;
       break;
       }
+
     case GBTLinkContext::State::Finished:
       break;
 

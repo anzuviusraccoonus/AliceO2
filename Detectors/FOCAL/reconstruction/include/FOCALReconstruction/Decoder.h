@@ -25,7 +25,7 @@ struct GBTLinkContext {
   State state   = State::WaitingForFrame;
   int   lines   = 0;
   int   samples = 0;
-  int   id      = -1; // currently unusued
+  int   id      = -1; // currently unused
 };
 
 /// \class Decoder
@@ -54,11 +54,11 @@ class Decoder {
     /// \brief Get the decoded data for all events
     const std::vector<EventData>& getEvents() const;
 
-    bool checkCRC(readout::DataLink&);
+    bool checkCRC(const readout::DataLink&);
   
   private:
     void processLine(const GBTLine& line);
-    void prepareNewEvent();
+    void prepareNewEvent(const GBTLine& triggerLine);
 
     std::vector<GBTLinkContext> mLinkContexts = {};
 

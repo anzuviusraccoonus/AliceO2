@@ -1,5 +1,5 @@
 #include "DataFormatsFOCAL/EventData.h"
-
+#include <iostream> // remove this
 using namespace o2::focal;
 using namespace o2::focal::readout;
 
@@ -23,4 +23,12 @@ const std::vector<readout::GBTLink>& EventData::getData(size_t sampleIndex) cons
 
 size_t EventData::getNumberOfSamples() const {
   return mSamples.size();
+}
+
+void EventData::setInteractionRecord(o2::InteractionRecord ir) {
+  mInteractionRecord = ir;
+}
+
+void EventData::printInteractionRecord() const {
+  std::cout << mInteractionRecord << std::endl;
 }

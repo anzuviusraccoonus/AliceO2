@@ -1,8 +1,10 @@
 #ifndef ALICEO2_FOCAL_EVENTDATA_H
 #define ALICEO2_FOCAL_EVENTDATA_H
 
-#include <vector>
 #include <Rtypes.h>
+#include <vector>
+
+#include "CommonDataFormat/InteractionRecord.h"
 #include "DataFormatsFOCAL/Readout.h"
 
 namespace o2::focal
@@ -43,10 +45,14 @@ class EventData {
     /// Will return the size of mSamples; the number of samples set up in this event.
     /// It does not guarantee that (all of) those samples are filled or complete.
     size_t getNumberOfSamples() const;
+    
+    void setInteractionRecord(o2::InteractionRecord ir);
+    void printInteractionRecord() const;
 
   private:
     int mNumGBTLinks = 0;
     std::vector<SampleData> mSamples;
+    o2::InteractionRecord mInteractionRecord;
 
   ClassDefNV(EventData, 1);
 };
