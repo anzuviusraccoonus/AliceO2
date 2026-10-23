@@ -14,12 +14,12 @@ void RawDecoderSpec::init(InitContext& ctx) {
 }
 
 void RawDecoderSpec::run(ProcessingContext& ctx) {
-  int i = 0;
-  std::vector<char> payloadBuffer;
+  mDecoder.reset();
 
-  // If nHBFPerTF=32, we always get only one element here, it seems
-  // Not sure what the point of this loop then is
+  // Loop over incoming messages
+  int i = 0;
   for (const auto& msgData : framework::InputRecordWalker(ctx.inputs())) {
+    std::vector<char> payloadBuffer;
     const int msgSize = DataRefUtils::getPayloadSize(msgData);
     const o2::header::DataHeader* msgHeader = DataRefUtils::getHeader<o2::header::DataHeader*>(msgData);
     if (mDebugMode) {
