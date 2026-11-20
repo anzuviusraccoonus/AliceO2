@@ -47,6 +47,7 @@ class EventData {
     size_t getNumberOfSamples() const;
     
     void setInteractionRecord(o2::InteractionRecord ir);
+    const o2::InteractionRecord& getInteractionRecord() const;
     void printInteractionRecord() const;
 
   private:
@@ -55,6 +56,25 @@ class EventData {
     o2::InteractionRecord mInteractionRecord;
 
   ClassDefNV(EventData, 1);
+};
+
+class CombinedEventData {
+  public:
+    CombinedEventData() = default;
+    CombinedEventData(size_t numCRULinks);
+
+    void addCRUData(size_t cruID, EventData event);
+
+    const EventData& getCRUData(size_t cruID);
+
+    void setInteractionRecord(o2::InteractionRecord ir);
+    const o2::InteractionRecord& getInteractionRecord() const;
+
+  private:
+    o2::InteractionRecord mInteractionRecord;
+    std::vector<EventData> mCRUData;
+
+  ClassDefNV(CombinedEventData, 1);
 };
 
 } // namespace o2::focal

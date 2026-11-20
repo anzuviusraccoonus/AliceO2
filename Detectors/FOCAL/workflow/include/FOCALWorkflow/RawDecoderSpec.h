@@ -20,11 +20,22 @@ class RawDecoderSpec : public framework::Task {
     void endOfStream(framework::EndOfStreamContext& ctx);
 
   private:
+    void prepareOutput();
     void sendOutput(framework::ProcessingContext& ctx);
+    void addEvent(size_t cruID, EventData event);
 
     bool mDebugMode;
-    Decoder mDecoder{2}; // TODO: get # of links from a config somewhere
-                         //       (also have separate decoders for each subdetector)
+
+    // Vector of H2GCROC decoders; one for each CRU link
+    // Should also be done on a per-detector basis in the future
+    std::vector<Decoder> mDecoders;
+
+    // Container for per-CRU event data such that they can be combined later
+    // via their interaction records. Currently just for single detector
+    std::map<o2::InteractionRecord, CombinedEventData> mPendingEvents;
+
+    // Container for combined event data (for one detector) to send
+    std::vector<CombinedEventData> mOutputEvents;
 };
 
 framework::DataProcessorSpec getRawDecoderSpec(bool debug);

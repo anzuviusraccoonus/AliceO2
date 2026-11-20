@@ -47,4 +47,7 @@
 #pragma link C++ class o2::focal::EventData + ;
 #pragma link C++ class std::vector < o2::focal::EventData> + ;
 
+#pragma link C++ class o2::focal::CombinedEventData +;
+#pragma link C++ class std::vector < o2::focal::CombinedEventData > +;
+
 #endif

@@ -1,5 +1,5 @@
 #include "DataFormatsFOCAL/EventData.h"
-#include <iostream> // remove this
+
 using namespace o2::focal;
 using namespace o2::focal::readout;
 
@@ -29,6 +29,34 @@ void EventData::setInteractionRecord(o2::InteractionRecord ir) {
   mInteractionRecord = ir;
 }
 
+const o2::InteractionRecord& EventData::getInteractionRecord() const {
+  return mInteractionRecord;
+}
+
 void EventData::printInteractionRecord() const {
   std::cout << mInteractionRecord << std::endl;
+}
+
+CombinedEventData::CombinedEventData(size_t numCRULinks)
+  : mCRUData(numCRULinks) {
+}
+
+void CombinedEventData::addCRUData(size_t cruID, EventData event) {
+  if (mCRUData.at(cruID).getNumberOfSamples() > 0) {
+    throw std::runtime_error("Duplicate CRU event!");
+  }
+
+  mCRUData[cruID] = std::move(event);
+}
+
+void CombinedEventData::setInteractionRecord(o2::InteractionRecord ir) {
+  mInteractionRecord = ir;
+}
+
+const o2::InteractionRecord& CombinedEventData::getInteractionRecord() const {
+  return mInteractionRecord;
+}
+
+const EventData& CombinedEventData::getCRUData(size_t cruID) {
+  return mCRUData.at(cruID);
 }
