@@ -33,7 +33,6 @@ void Decoder::prepareNewEvent(const GBTLine& triggerLine) {
   mCurrentEvent = &(mEvents.back());
   mCurrentEvent->setInteractionRecord(o2::InteractionRecord(triggerLine.words[1],
                                                            triggerLine.words[3]));
-  mCurrentEvent->printInteractionRecord();
 }
 
 void Decoder::decodeBuffer(std::span<const char> buffer) {

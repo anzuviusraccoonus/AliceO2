@@ -33,10 +33,6 @@ const o2::InteractionRecord& EventData::getInteractionRecord() const {
   return mInteractionRecord;
 }
 
-void EventData::printInteractionRecord() const {
-  std::cout << mInteractionRecord << std::endl;
-}
-
 CombinedEventData::CombinedEventData(size_t numCRULinks)
   : mCRUData(numCRULinks) {
 }

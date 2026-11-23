@@ -48,7 +48,6 @@ class EventData {
     
     void setInteractionRecord(o2::InteractionRecord ir);
     const o2::InteractionRecord& getInteractionRecord() const;
-    void printInteractionRecord() const;
 
   private:
     int mNumGBTLinks = 0;
