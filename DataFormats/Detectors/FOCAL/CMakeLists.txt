@@ -21,6 +21,7 @@ o2_add_library(
     src/ChannelData.cxx
     src/Readout.cxx
     src/EventData.cxx
+    src/ROOTEventRecords.cxx
     PUBLIC_LINK_LIBRARIES O2::CommonDataFormat
     O2::Headers
   )
@@ -36,4 +37,5 @@ o2_target_root_dictionary(
     include/DataFormatsFOCAL/ChannelData.h
     include/DataFormatsFOCAL/Readout.h
     include/DataFormatsFOCAL/EventData.h
+    include/DataFormatsFOCAL/ROOTEventRecords.h
   )

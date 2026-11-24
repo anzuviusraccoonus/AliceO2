@@ -12,6 +12,7 @@
 o2_add_library(FOCALWorkflow
   SOURCES
     src/RawDecoderSpec.cxx
+    src/RootifierSpec.cxx
   PUBLIC_LINK_LIBRARIES
     O2::Framework
     O2::DetectorsRaw
@@ -22,6 +23,13 @@ o2_add_library(FOCALWorkflow
 o2_add_executable(raw-decoder-workflow COMPONENT_NAME focal
   SOURCES
     src/raw-decoder-workflow.cxx
+  PUBLIC_LINK_LIBRARIES
+    O2::FOCALWorkflow
+  )
+
+o2_add_executable(rootifier COMPONENT_NAME focal
+  SOURCES
+    src/rootifier-workflow.cxx
   PUBLIC_LINK_LIBRARIES
     O2::FOCALWorkflow
   )

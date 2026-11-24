@@ -53,6 +53,10 @@ const o2::InteractionRecord& CombinedEventData::getInteractionRecord() const {
   return mInteractionRecord;
 }
 
-const EventData& CombinedEventData::getCRUData(size_t cruID) {
+const EventData& CombinedEventData::getCRUData(size_t cruID) const {
   return mCRUData.at(cruID);
+}
+
+const std::vector<EventData>& CombinedEventData::getCRUData() const {
+  return mCRUData;
 }

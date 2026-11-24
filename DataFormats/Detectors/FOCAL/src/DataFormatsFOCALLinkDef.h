@@ -50,4 +50,13 @@
 #pragma link C++ class o2::focal::CombinedEventData +;
 #pragma link C++ class std::vector < o2::focal::CombinedEventData > +;
 
+#pragma link C++ namespace o2::focal::records;
+
+#pragma link C++ class o2::focal::records::DataLinkRecord+;
+#pragma link C++ class o2::focal::records::ChannelRecord+;
+#pragma link C++ class o2::focal::records::Event+;
+
+#pragma link C++ class std::vector<o2::focal::records::DataLinkRecord>+;
+#pragma link C++ class std::vector<o2::focal::records::ChannelRecord>+;
+
 #endif

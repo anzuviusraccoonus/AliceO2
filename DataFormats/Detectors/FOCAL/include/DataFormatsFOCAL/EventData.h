@@ -64,7 +64,8 @@ class CombinedEventData {
 
     void addCRUData(size_t cruID, EventData event);
 
-    const EventData& getCRUData(size_t cruID);
+    const EventData& getCRUData(size_t cruID) const;
+    const std::vector<EventData>& getCRUData() const;
 
     void setInteractionRecord(o2::InteractionRecord ir);
     const o2::InteractionRecord& getInteractionRecord() const;
