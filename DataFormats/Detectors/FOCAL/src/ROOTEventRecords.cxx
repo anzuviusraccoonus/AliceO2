@@ -1,23 +1,10 @@
-#include "DataFormatsFOCAL/ROOTEventRecords.h"
-#include "DataFormatsFOCAL/Readout.h"
 #include "DataFormatsFOCAL/EventData.h"
-
-//namespace
-//{
-//
-//template<typename T>
-//uint32_t recordIndex(const std::vector<T>& records) {
-//  if (records.size() >= std::numeric_limits<uint32_t>::max()) {
-//    throw std::overflow_error("Too many records in event");
-//  }
-//
-//  return static_cast<uint32_t>(records.size());
-//}
-//
-//} // namespace
+#include "DataFormatsFOCAL/Readout.h"
+#include "DataFormatsFOCAL/ROOTEventRecords.h"
 
 using namespace o2::focal;
 using namespace o2::focal::readout;
+
 void records::flattenEvent(const CombinedEventData& input, records::Event& output) {
   output.clear();
 
